@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDB } from "@/lib/database";
 import type { ResultSetHeader } from "mysql2/promise";
 
-// Payload shape expected from your ReceiveForm:
+// Payload can be:
 // {
-//   hospitalName: string,
-//   receiverName: string,
-//   receiverTitle: string,
-//   serialNumbers: string[]
+//   hospitalName | hospital: string,
+//   receiverName | receiver: string,
+//   receiverTitle | title: string,
+//   serialNumbers | dosimeters | serials: string[]
 // }
 
 export async function POST(request: NextRequest) {
@@ -16,11 +16,22 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { hospitalName, receiverName, receiverTitle, serialNumbers } = body ?? {};
+    console.log("📥 Incoming receive payload:", body);
 
+    // Map variations
+    const hospital =
+      body.hospital || body.hospitalName || null;
+    const receiver =
+      body.receiverName || body.receiver || null;
+    const receiverTitle =
+      body.receiverTitle || body.title || null;
+    const serialNumbers: string[] =
+      body.serialNumbers || body.dosimeters || body.serials || [];
+
+    // Validation
     if (
-      !hospitalName ||
-      !receiverName ||
+      !hospital ||
+      !receiver ||
       !receiverTitle ||
       !Array.isArray(serialNumbers) ||
       serialNumbers.length === 0
@@ -31,6 +42,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Clean serials
     const serials: string[] = serialNumbers
       .map((s: string) => (typeof s === "string" ? s.trim() : ""))
       .filter((s: string) => s.length > 0);
@@ -46,6 +58,7 @@ export async function POST(request: NextRequest) {
 
     let receivedCount = 0;
 
+    // Update each dosimeter
     for (const serial of serials) {
       const [res] = await conn.execute<ResultSetHeader>(
         `UPDATE dosimeters
@@ -55,7 +68,7 @@ export async function POST(request: NextRequest) {
                 received_by = ?,
                 receiver_title = ?
           WHERE serial_number = ?`,
-        [hospitalName, receiverName, receiverTitle, serial]
+        [hospital, receiver, receiverTitle, serial]
       );
       if (res.affectedRows > 0) receivedCount++;
     }
@@ -68,10 +81,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Create notification
     await conn.execute(
       `INSERT INTO notifications (type, message, is_read)
        VALUES (?, ?, ?)`,
-      ["reception", `${hospitalName} has received ${receivedCount} dosimeters. Receiver: ${receiverName} (${receiverTitle})`, 0]
+      [
+        "reception",
+        `${hospital} has received ${receivedCount} dosimeter(s). Receiver: ${receiver} (${receiverTitle})`,
+        0,
+      ]
     );
 
     await conn.commit();
@@ -85,7 +103,7 @@ export async function POST(request: NextRequest) {
     try {
       await conn.rollback();
     } catch {}
-    console.error("Error receiving dosimeters:", err);
+    console.error("❌ Error receiving dosimeters:", err);
     return NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 }
