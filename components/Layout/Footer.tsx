@@ -44,7 +44,7 @@ export default function Footer() {
         {/* Divider */}
         <div className="border-t border-white/20 mt-8 pt-6 text-center text-sm opacity-80">
           <p>© {new Date().getFullYear()} Christian Health Association of Kenya. All rights reserved.</p>
-          <p className="mt-1">Dosimetry Tracking System v1.0</p>
+          <p className="mt-1">dosimeter Tracking System v1.0</p>
         </div>
       </div>
     </footer>

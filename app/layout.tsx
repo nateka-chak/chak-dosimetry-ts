@@ -4,6 +4,8 @@ import "./globals.css";
 import { initDatabase } from '@/lib/database';
 import Header from "@/components/Layout/Header";
 import Footer from "@/components/Layout/Footer";
+// import NotificationProvider from "@/components/Layout/NotificationProvider";
+import Providers from "./Providers";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -11,8 +13,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'CHAK Dosimetry Tracker',
-  description: 'Dosimetry Tracking System for Christian Health Association of Kenya',
+  title: 'CHAK dosimeter Tracker',
+  description: 'dosimeter Tracking System for Christian Health Association of Kenya',
 };
 
 // Initialize database on server start
@@ -27,11 +29,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen flex flex-col">
-          <Header />
-          <main className="flex-grow">{children}</main>
-          <Footer />
-        </div>
+        <Providers>
+          <div className="min-h-screen flex flex-col">
+            <Header />
+            <main className="flex-grow">{children}</main>
+            <Footer />
+          </div>
+        </Providers>
       </body>
     </html>
   );

@@ -13,8 +13,8 @@ const dbConfig = {
 const pool = mysql.createPool(dbConfig);
 
 // Table definitions
-const createDosimetries = `
-  CREATE TABLE IF NOT EXISTS dosimetries (
+const createdosimeters = `
+  CREATE TABLE IF NOT EXISTS dosimeters (
     id INT AUTO_INCREMENT PRIMARY KEY,
     serial_number VARCHAR(255) UNIQUE NOT NULL,
     status ENUM('dispatched', 'in_transit', 'received') DEFAULT 'dispatched',
@@ -39,13 +39,13 @@ const createShipments = `
   )
 `;
 
-const createShipmentDosimetries = `
-  CREATE TABLE IF NOT EXISTS shipment_dosimetries (
+const createShipmentdosimeters = `
+  CREATE TABLE IF NOT EXISTS shipment_dosimeters (
     id INT AUTO_INCREMENT PRIMARY KEY,
     shipment_id INT,
-    dosimetry_id INT,
+    dosimeter_id INT,
     FOREIGN KEY (shipment_id) REFERENCES shipments(id) ON DELETE CASCADE,
-    FOREIGN KEY (dosimetry_id) REFERENCES dosimetries(id) ON DELETE CASCADE
+    FOREIGN KEY (dosimeter_id) REFERENCES dosimeters(id) ON DELETE CASCADE
   )
 `;
 
@@ -63,9 +63,9 @@ const createNotifications = `
 export const initDatabase = async (): Promise<void> => {
   const connection = await pool.getConnection();
   try {
-    await connection.query(createDosimetries);
+    await connection.query(createdosimeters);
     await connection.query(createShipments);
-    await connection.query(createShipmentDosimetries);
+    await connection.query(createShipmentdosimeters);
     await connection.query(createNotifications);
 
     console.log('✅ Database tables initialized successfully');

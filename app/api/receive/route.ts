@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     // Process each serial number
     for (const serialNumber of serialNumbers) {
       const result = await query(
-        `UPDATE dosimetries 
+        `UPDATE dosimeters 
          SET status = 'received', received_at = NOW(), 
              hospital_name = ?, received_by = ?, receiver_title = ?
          WHERE serial_number = ?`,
@@ -47,20 +47,20 @@ export async function POST(request: NextRequest) {
     // Create notification
     await query(
       'INSERT INTO notifications (type, message, is_read) VALUES (?, ?, ?)',
-      ['reception', `${hospitalName} has received ${receivedCount} dosimetries. Receiver: ${receiverName} (${receiverTitle})`, 0]
+      ['reception', `${hospitalName} has received ${receivedCount} dosimeters. Receiver: ${receiverName} (${receiverTitle})`, 0]
     );
 
     await query('COMMIT');
 
     return NextResponse.json({
       success: true,
-      message: 'Dosimetries received successfully',
+      message: 'dosimeters received successfully',
       data: { receivedCount }
     });
 
   } catch (error) {
     await query('ROLLBACK');
-    console.error('Error receiving dosimetries:', error);
+    console.error('Error receiving dosimeters:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

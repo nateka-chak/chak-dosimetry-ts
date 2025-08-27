@@ -1,4 +1,4 @@
-export interface Dosimetry {
+export interface dosimeter {
   id: number;
   serial_number: string;
   status: 'dispatched' | 'in_transit' | 'received';
@@ -37,7 +37,7 @@ export interface DispatchFormData {
   address: string;
   contactPerson: string;
   contactPhone: string;
-  dosimetries: string[];
+  dosimeters: string[];
 }
 
 export interface ReceiveFormData {

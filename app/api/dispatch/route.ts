@@ -5,10 +5,10 @@ import { DispatchFormData } from '@/types';
 export async function POST(request: NextRequest) {
   try {
     const body: DispatchFormData = await request.json();
-    const { hospital, address, contactPerson, contactPhone, dosimetries } = body;
+    const { hospital, address, contactPerson, contactPhone, dosimeters } = body;
 
     // Validate input
-    if (!hospital || !contactPerson || !contactPhone || !dosimetries || dosimetries.length === 0) {
+    if (!hospital || !contactPerson || !contactPhone || !dosimeters || dosimeters.length === 0) {
       return NextResponse.json(
         { success: false, error: 'All fields are required' },
         { status: 400 }
@@ -28,18 +28,18 @@ export async function POST(request: NextRequest) {
     const shipmentId = shipmentResult.insertId;
     let processed = 0;
 
-    // Process each dosimetry
-    for (const serialNumber of dosimetries) {
-      // Check if dosimetry exists
-      const existingDosimetry = await query(
-        'SELECT id FROM dosimetries WHERE serial_number = ?',
+    // Process each dosimeter
+    for (const serialNumber of dosimeters) {
+      // Check if dosimeter exists
+      const existingdosimeter = await query(
+        'SELECT id FROM dosimeters WHERE serial_number = ?',
         [serialNumber]
       );
 
-      if (existingDosimetry.length > 0) {
-        // Update existing dosimetry
+      if (existingdosimeter.length > 0) {
+        // Update existing dosimeter
         await query(
-          `UPDATE dosimetries 
+          `UPDATE dosimeters 
            SET status = 'dispatched', dispatched_at = NOW(), hospital_name = ?
            WHERE serial_number = ?`,
           [hospital, serialNumber]
@@ -47,21 +47,21 @@ export async function POST(request: NextRequest) {
         
         // Link to shipment
         await query(
-          'INSERT INTO shipment_dosimetries (shipment_id, dosimetry_id) VALUES (?, ?)',
-          [shipmentId, existingDosimetry[0].id]
+          'INSERT INTO shipment_dosimeters (shipment_id, dosimeter_id) VALUES (?, ?)',
+          [shipmentId, existingdosimeter[0].id]
         );
       } else {
-        // Insert new dosimetry
-        const dosimetryResult = await query(
-          `INSERT INTO dosimetries (serial_number, status, hospital_name, dispatched_at) 
+        // Insert new dosimeter
+        const dosimeterResult = await query(
+          `INSERT INTO dosimeters (serial_number, status, hospital_name, dispatched_at) 
            VALUES (?, 'dispatched', ?, NOW())`,
           [serialNumber, hospital]
         );
         
         // Link to shipment
         await query(
-          'INSERT INTO shipment_dosimetries (shipment_id, dosimetry_id) VALUES (?, ?)',
-          [shipmentId, dosimetryResult.insertId]
+          'INSERT INTO shipment_dosimeters (shipment_id, dosimeter_id) VALUES (?, ?)',
+          [shipmentId, dosimeterResult.insertId]
         );
       }
 
@@ -71,23 +71,23 @@ export async function POST(request: NextRequest) {
     // Create notification
     await query(
       'INSERT INTO notifications (type, message, is_read) VALUES (?, ?, ?)',
-      ['dispatch', `New shipment dispatched to ${hospital} with ${dosimetries.length} dosimetries`, 0]
+      ['dispatch', `New shipment dispatched to ${hospital} with ${dosimeters.length} dosimeters`, 0]
     );
 
     await query('COMMIT');
 
     return NextResponse.json({
       success: true,
-      message: 'Dosimetries dispatched successfully',
+      message: 'dosimeters dispatched successfully',
       data: {
         shipmentId,
-        dispatchedCount: dosimetries.length
+        dispatchedCount: dosimeters.length
       }
     });
 
   } catch (error) {
     await query('ROLLBACK');
-    console.error('Error dispatching dosimetries:', error);
+    console.error('Error dispatching dosimeters:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
@@ -98,9 +98,9 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const shipments = await query(`
-      SELECT s.*, COUNT(sd.dosimetry_id) as items 
+      SELECT s.*, COUNT(sd.dosimeter_id) as items 
       FROM shipments s 
-      LEFT JOIN shipment_dosimetries sd ON s.id = sd.shipment_id 
+      LEFT JOIN shipment_dosimeters sd ON s.id = sd.shipment_id 
       GROUP BY s.id 
       ORDER BY s.dispatched_at DESC
     `);

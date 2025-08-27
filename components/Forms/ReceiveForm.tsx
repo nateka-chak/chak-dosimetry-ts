@@ -6,6 +6,7 @@ import Button from '../UI/Button';
 import Loader from '../UI/Loader';
 import ImageUpload from './ImageUpload';
 import { ReceiveFormData } from '@/types';
+import { useNotification } from '@/components/Layout/NotificationProvider';
 
 interface ReceiveFormProps {
   onSubmit: (data: ReceiveFormData) => Promise<boolean>;
@@ -13,6 +14,7 @@ interface ReceiveFormProps {
 }
 
 export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps) {
+  const { showNotification } = useNotification();
   const [activeTab, setActiveTab] = useState<'manual' | 'image'>('manual');
   const [formData, setFormData] = useState<ReceiveFormData>({
     hospitalName: '',
@@ -21,74 +23,57 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
     serialNumbers: ['']
   });
 
-  // 🔹 Generic input handler
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // 🔹 Handle serial numbers manually
-  const handleSerialNumberChange = (index: number, value: string): void => {
+  const handleSerialNumberChange = (index: number, value: string) => {
     const newSerialNumbers = [...formData.serialNumbers];
     newSerialNumbers[index] = value;
-    setFormData(prev => ({
-      ...prev,
-      serialNumbers: newSerialNumbers
-    }));
+    setFormData(prev => ({ ...prev, serialNumbers: newSerialNumbers }));
   };
 
-  const addSerialNumberField = (): void => {
-    setFormData(prev => ({
-      ...prev,
-      serialNumbers: [...prev.serialNumbers, '']
-    }));
+  const addSerialNumberField = () => {
+    setFormData(prev => ({ ...prev, serialNumbers: [...prev.serialNumbers, ''] }));
   };
 
-  const removeSerialNumberField = (index: number): void => {
+  const removeSerialNumberField = (index: number) => {
     if (formData.serialNumbers.length > 1) {
       const newSerialNumbers = formData.serialNumbers.filter((_, i) => i !== index);
-      setFormData(prev => ({
-        ...prev,
-        serialNumbers: newSerialNumbers
-      }));
+      setFormData(prev => ({ ...prev, serialNumbers: newSerialNumbers }));
     }
   };
 
-  // 🔹 Handle serials from image upload
-  const handleImageNumbersDetected = (detectedNumbers: string[]): void => {
+  const handleImageNumbersDetected = (detectedNumbers: string[]) => {
     setFormData(prev => ({
       ...prev,
       serialNumbers: detectedNumbers.filter(num => num.trim() !== '')
     }));
   };
 
-  // 🔹 Form submission
-  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const filteredSerialNumbers = formData.serialNumbers.filter(num => num.trim() !== '');
-
     if (filteredSerialNumbers.length === 0) {
-      alert('⚠️ Please add at least one serial number.');
+      showNotification('⚠️ Please add at least one serial number.', 'error');
       return;
     }
 
-    const success = await onSubmit({
-      ...formData,
-      serialNumbers: filteredSerialNumbers
-    });
+    const success = await onSubmit({ ...formData, serialNumbers: filteredSerialNumbers });
 
     if (success) {
+      showNotification('✅ Receipt confirmed successfully!', 'success');
       setFormData({
         hospitalName: '',
         receiverName: '',
         receiverTitle: '',
         serialNumbers: ['']
       });
-      setActiveTab('manual'); // reset to manual after successful submit
+      setActiveTab('manual');
+    } else {
+      showNotification('❌ Failed to confirm receipt. Please try again.', 'error');
     }
   };
 
@@ -177,9 +162,8 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
           {/* Serial Numbers */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Dosimetry Serial Numbers *
+              Dosimeter Serial Numbers *
             </label>
-
             {formData.serialNumbers.map((serial, index) => (
               <div key={index} className="flex items-center mb-2">
                 <input
@@ -201,7 +185,6 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
                 )}
               </div>
             ))}
-
             <button
               type="button"
               onClick={addSerialNumberField}
@@ -228,7 +211,6 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
       ) : (
         <div className="space-y-6">
           <ImageUpload onNumbersDetected={handleImageNumbersDetected} />
-
           <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-md">
             <div className="flex">
               <svg

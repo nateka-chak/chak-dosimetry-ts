@@ -66,7 +66,7 @@ export default function ImageUpload({ onNumbersDetected }: ImageUploadProps) {
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6 space-y-6 border border-gray-100">
-      <h2 className="text-xl font-semibold text-gray-800">Upload Dosimetry Images</h2>
+      <h2 className="text-xl font-semibold text-gray-800">Upload dosimeter Images</h2>
       <p className="text-sm text-gray-500">
         Upload or capture images of dosimeters, and the system will auto-detect their serial numbers.
       </p>
