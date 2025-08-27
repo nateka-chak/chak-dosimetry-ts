@@ -7,23 +7,35 @@ import { DispatchFormData } from '@/types';
 export default function Dispatch() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Handle the form submission
-  const handleSubmit = async (data: DispatchFormData) => {
+  // // Handle the form submission
+  // const handleSubmit = async (data: DispatchFormData) => {
+  //   setIsSubmitting(true);
+
+  //   try {
+  //     // TODO: Replace with your API call or logic
+  //     console.log('Dispatch data:', data);
+
+  //     // Simulate async request
+  //     await new Promise((resolve) => setTimeout(resolve, 1200));
+
+  //     alert('Dosimeters dispatched successfully!');
+  //     return true;
+  //   } catch (error) {
+  //     console.error(error);
+  //     alert('Failed to dispatch dosimeters.');
+  //     return false;
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+    const handleSubmit = async (data: any) => {
     setIsSubmitting(true);
-
     try {
-      // TODO: Replace with your API call or logic
-      console.log('Dispatch data:', data);
-
-      // Simulate async request
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-
-      alert('Dosimeters dispatched successfully!');
-      return true;
-    } catch (error) {
-      console.error(error);
-      alert('Failed to dispatch dosimeters.');
-      return false;
+      const res = await fetch("/api/dispatch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      return res.ok;
     } finally {
       setIsSubmitting(false);
     }

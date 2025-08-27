@@ -13,10 +13,9 @@ export default function ReceivePage() {
     setIsSubmitting(true);
 
     try {
-      // Example: POST to your API route (uncomment & adapt when you have an API)
-      /*
-      const res = await fetch('/api/receive', {
-        method: 'POST',
+      // Call PATCH on your shipments API
+      const res = await fetch('/api/shipments', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
@@ -26,14 +25,11 @@ export default function ReceivePage() {
         console.error('API error:', err);
         throw new Error('Failed to submit receipt');
       }
-      */
 
-      // Simulated network delay for dev/demo (remove when real API is used)
+      // Simulated network delay for dev/demo (optional, remove in prod)
       await new Promise((resolve) => setTimeout(resolve, 900));
 
-      // Optionally show a success message (you can replace with a nicer toast)
       alert('Receipt confirmed successfully! CHAK has been notified.');
-
       setIsSubmitting(false);
       return true;
     } catch (error) {
@@ -48,7 +44,10 @@ export default function ReceivePage() {
     <>
       <Head>
         <title>Receive - CHAK Dosimetry Tracker</title>
-        <meta name="description" content="Confirm receipt of dosimetries for CHAK" />
+        <meta
+          name="description"
+          content="Confirm receipt of dosimetries for CHAK"
+        />
       </Head>
 
       <main className="min-h-screen bg-gray-50 py-10">
@@ -57,7 +56,7 @@ export default function ReceivePage() {
             Confirm Receipt of Dosimeters
           </h1>
 
-          {/* Use the centralized ReceiveForm component */}
+          {/* Pass the handler to your form */}
           <ReceiveForm onSubmit={handleReceiveSubmit} isSubmitting={isSubmitting} />
         </div>
       </main>

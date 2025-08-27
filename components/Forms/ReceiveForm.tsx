@@ -20,7 +20,7 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
     hospitalName: '',
     receiverName: '',
     receiverTitle: '',
-    serialNumbers: ['']
+    serialNumbers: [''],
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,7 +48,7 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
   const handleImageNumbersDetected = (detectedNumbers: string[]) => {
     setFormData(prev => ({
       ...prev,
-      serialNumbers: detectedNumbers.filter(num => num.trim() !== '')
+      serialNumbers: detectedNumbers.filter(num => num.trim() !== ''),
     }));
   };
 
@@ -61,18 +61,28 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
       return;
     }
 
-    const success = await onSubmit({ ...formData, serialNumbers: filteredSerialNumbers });
-
-    if (success) {
-      showNotification('✅ Receipt confirmed successfully!', 'success');
-      setFormData({
-        hospitalName: '',
-        receiverName: '',
-        receiverTitle: '',
-        serialNumbers: ['']
+    try {
+      const success = await onSubmit({
+        hospitalName: formData.hospitalName,
+        receiverName: formData.receiverName,
+        receiverTitle: formData.receiverTitle,
+        serialNumbers: filteredSerialNumbers,
       });
-      setActiveTab('manual');
-    } else {
+
+      if (success) {
+        showNotification('✅ Receipt confirmed successfully!', 'success');
+        setFormData({
+          hospitalName: '',
+          receiverName: '',
+          receiverTitle: '',
+          serialNumbers: [''],
+        });
+        setActiveTab('manual');
+      } else {
+        showNotification('❌ Failed to confirm receipt. Please try again.', 'error');
+      }
+    } catch (err) {
+      console.error('Receive submit error:', err);
       showNotification('❌ Failed to confirm receipt. Please try again.', 'error');
     }
   };
@@ -197,7 +207,7 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
 
           {/* Submit */}
           <div className="flex justify-end">
-            <Button type="submit" disabled={isSubmitting} className="flex items-center">
+            <Button type="submit" disabled={isSubmitting} className="flex items-center text-gray-900">
               {isSubmitting ? (
                 <>
                   <Loader size="small" className="mr-2" /> Processing...
