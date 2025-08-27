@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import ReceiveForm from '@/components/Forms/ReceiveForm';
 import { ReceiveFormData } from '@/types';
@@ -8,12 +8,10 @@ import { ReceiveFormData } from '@/types';
 export default function ReceivePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // onSubmit handler receives the form data from the ReceiveForm component
   const handleReceiveSubmit = async (data: ReceiveFormData): Promise<boolean> => {
     setIsSubmitting(true);
 
     try {
-      // Call PATCH on your shipments API
       const res = await fetch('/api/shipments', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -26,10 +24,10 @@ export default function ReceivePage() {
         throw new Error('Failed to submit receipt');
       }
 
-      // Simulated network delay for dev/demo (optional, remove in prod)
-      await new Promise((resolve) => setTimeout(resolve, 900));
+      // optional small delay for UI
+      await new Promise(res => setTimeout(res, 500));
 
-      alert('Receipt confirmed successfully! CHAK has been notified.');
+      // alert('Receipt confirmed successfully! CHAK has been notified.');
       setIsSubmitting(false);
       return true;
     } catch (error) {
@@ -44,10 +42,7 @@ export default function ReceivePage() {
     <>
       <Head>
         <title>Receive - CHAK Dosimetry Tracker</title>
-        <meta
-          name="description"
-          content="Confirm receipt of dosimetries for CHAK"
-        />
+        <meta name="description" content="Confirm receipt of dosimetries for CHAK" />
       </Head>
 
       <main className="min-h-screen bg-gray-50 py-10">
@@ -56,7 +51,6 @@ export default function ReceivePage() {
             Confirm Receipt of Dosimeters
           </h1>
 
-          {/* Pass the handler to your form */}
           <ReceiveForm onSubmit={handleReceiveSubmit} isSubmitting={isSubmitting} />
         </div>
       </main>

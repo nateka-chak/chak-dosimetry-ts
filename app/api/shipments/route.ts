@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/database";
 
-// 📦 GET all shipments (with auto in_transit logic)
+// 📦 GET all shipments with dynamic in_transit
 export async function GET() {
   try {
     const shipments = await query<any>(`
@@ -24,13 +24,12 @@ export async function GET() {
   }
 }
 
-// 🚚 POST new shipment (dispatch form)
+// 🚚 POST new shipment (dispatch)
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { hospital, address, contactPerson, contactPhone, dosimeters } = body;
 
-    // Insert shipment with dispatched status
     const result: any = await query(
       `INSERT INTO shipments (destination, address, contact_person, contact_phone, status, dispatched_at) 
        VALUES (?, ?, ?, ?, 'dispatched', NOW())`,
@@ -39,7 +38,7 @@ export async function POST(req: Request) {
 
     const shipmentId = result.insertId;
 
-    // Insert dosimeters + link them
+    // Insert dosimeters + link
     for (const serial of dosimeters) {
       const [dosimeterResult]: any = await query(
         `INSERT INTO dosimeters (serial_number, status, hospital_name) 
@@ -50,12 +49,7 @@ export async function POST(req: Request) {
 
       const dosimeterId =
         dosimeterResult.insertId ||
-        (
-          await query<any>(
-            `SELECT id FROM dosimeters WHERE serial_number=?`,
-            [serial]
-          )
-        )[0].id;
+        (await query<any>(`SELECT id FROM dosimeters WHERE serial_number=?`, [serial]))[0].id;
 
       await query(
         `INSERT INTO shipment_dosimeters (shipment_id, dosimeter_id) VALUES (?, ?)`,
@@ -69,7 +63,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to create shipment" }, { status: 500 });
   }
 }
-// 📬 PATCH: mark shipment as delivered
+
+// 📬 PATCH: mark shipment as received
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
@@ -77,7 +72,6 @@ export async function PATCH(req: Request) {
 
     let shipmentIdToUpdate = shipmentId;
 
-    // 🔎 If shipmentId not provided, resolve it using the first serialNumber
     if (!shipmentIdToUpdate && serialNumbers?.length > 0) {
       const rows: any = await query(
         `SELECT sd.shipment_id
@@ -88,37 +82,30 @@ export async function PATCH(req: Request) {
         [serialNumbers[0]]
       );
 
-      if (rows.length > 0) {
-        shipmentIdToUpdate = rows[0].shipment_id;
-      } else {
-        return NextResponse.json(
-          { error: "Could not find shipment for these serials" },
-          { status: 404 }
-        );
-      }
+      if (rows.length > 0) shipmentIdToUpdate = rows[0].shipment_id;
+      else return NextResponse.json({ error: "Could not find shipment for these serials" }, { status: 404 });
     }
 
-    if (!shipmentIdToUpdate) {
+    if (!shipmentIdToUpdate)
       return NextResponse.json({ error: "shipmentId or serialNumbers required" }, { status: 400 });
-    }
 
-    // ✅ Update shipment status
+    // Update shipment
     await query(
       `UPDATE shipments 
-       SET status='delivered', delivered_at=NOW(), receiver_name=?, receiver_title=? 
+       SET status='delivered', receiver_name=?, receiver_title=? 
        WHERE id=?`,
       [receiverName, receiverTitle, shipmentIdToUpdate]
     );
 
-    // ✅ Update dosimeters linked to this shipment
+    // Update dosimeters
     if (serialNumbers?.length > 0) {
       for (const serial of serialNumbers) {
-await query(
-  `UPDATE dosimeters 
-   SET status='received', hospital_name=? 
-   WHERE serial_number=?`,
-  [hospitalName, serial]
-);
+        await query(
+          `UPDATE dosimeters 
+           SET status='received', hospital_name=? 
+           WHERE serial_number=?`,
+          [hospitalName, serial]
+        );
       }
     }
 
