@@ -1,4 +1,4 @@
-import { Truck, Package, CheckCircle, MapPin, Calendar } from 'lucide-react';
+import { Truck, Package, CheckCircle, MapPin, Calendar, User } from 'lucide-react'; 
 import { Shipment } from '@/types';
 
 interface ShipmentCardProps {
@@ -50,9 +50,17 @@ export default function ShipmentCard({ shipment }: ShipmentCardProps) {
         <span>{shipment.address || 'Address not specified'}</span>
       </div>
       
-      <div className="flex items-center text-sm text-gray-500 mb-4">
+      <div className="flex items-center text-sm text-gray-500 mb-2">
         <Calendar className="h-4 w-4 mr-1" />
         <span>Dispatched: {new Date(shipment.dispatched_at).toLocaleDateString()}</span>
+      </div>
+
+      {/* Courier details */}
+      <div className="flex items-center text-sm text-gray-500 mb-4">
+        <User className="h-4 w-4 mr-1" />
+        <span>
+          Courier: {shipment.courier_name || 'N/A'} — Staff: {shipment.courier_staff || 'N/A'}
+        </span>
       </div>
       
       <div className="mb-4">

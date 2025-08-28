@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from "react";
 
@@ -25,6 +25,8 @@ export default function Shipments() {
               <th className="px-4 py-3">ID</th>
               <th className="px-4 py-3">Hospital</th>
               <th className="px-4 py-3">Contact</th>
+              <th className="px-4 py-3">Courier</th>
+              <th className="px-4 py-3">Staff</th>
               <th className="px-4 py-3">Status</th>
             </tr>
           </thead>
@@ -34,6 +36,8 @@ export default function Shipments() {
                 <td className="px-4 py-3">{s.id}</td>
                 <td className="px-4 py-3">{s.destination}</td>
                 <td className="px-4 py-3">{s.contact_person}</td>
+                <td className="px-4 py-3">{s.courier_name}</td>
+                <td className="px-4 py-3">{s.courier_staff}</td>
                 <td className="px-4 py-3">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -55,6 +59,7 @@ export default function Shipments() {
     </div>
   );
 }
+
 
 // 'use client';
 

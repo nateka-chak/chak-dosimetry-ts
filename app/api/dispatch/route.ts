@@ -15,6 +15,8 @@ export async function POST(request: NextRequest) {
     const address = body.address || body.location || null;
     const contactPerson = body.contactPerson || body.contactName || null;
     const contactPhone = body.contactPhone || body.phone || body.contact || null;
+    const courierName = body.courier_name || body.courierName || null;   // ✅ courier_name
+    const courierStaff = body.courier_staff || body.courierStaff || null; // ✅ courier_staff
     const dosimeters: string[] = body.dosimeters || body.serials || [];
 
     // Validation
@@ -22,11 +24,13 @@ export async function POST(request: NextRequest) {
       !hospital ||
       !contactPerson ||
       !contactPhone ||
+      !courierName ||
+      !courierStaff ||
       !Array.isArray(dosimeters) ||
       dosimeters.length === 0
     ) {
       return NextResponse.json(
-        { success: false, error: "All fields are required" },
+        { success: false, error: "All fields (including courier) are required" },
         { status: 400 }
       );
     }
@@ -47,9 +51,10 @@ export async function POST(request: NextRequest) {
 
     // Insert shipment with full details
     const [shipmentRes] = await conn.execute<ResultSetHeader>(
-      `INSERT INTO shipments (destination, address, contact_person, contact_phone, status, dispatched_at)
-       VALUES (?, ?, ?, ?, 'dispatched', NOW())`,
-      [hospital, address, contactPerson, contactPhone]
+      `INSERT INTO shipments 
+        (destination, address, contact_person, contact_phone, courier_name, courier_staff, status, dispatched_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'dispatched', NOW())`,
+      [hospital, address, contactPerson, contactPhone, courierName, courierStaff]
     );
     const shipmentId = shipmentRes.insertId;
 
@@ -95,7 +100,7 @@ export async function POST(request: NextRequest) {
        VALUES (?, ?, ?)`,
       [
         "dispatch",
-        `New shipment dispatched to ${hospital} with ${serials.length} dosimeters`,
+        `New shipment dispatched to ${hospital} by ${courierName} (${courierStaff}) with ${serials.length} dosimeters`,
         0,
       ]
     );

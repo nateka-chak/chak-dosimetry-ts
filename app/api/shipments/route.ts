@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/database";
 
-// 📦 GET all shipments with dynamic in_transit
+// GET all shipments with dynamic in_transit
 export async function GET() {
   try {
     const shipments = await query<any>(`
       SELECT 
-        s.*,
+        s.id,
+        s.destination,
+        s.address,
+        s.contact_person,
+        s.contact_phone,
+        s.courier_name,
+        s.courier_staff,
+        s.status,
+        s.dispatched_at,
+        s.receiver_name,
+        s.receiver_title,
+        s.created_at,
         CASE 
           WHEN s.status = 'dispatched' 
             AND TIMESTAMPDIFF(HOUR, s.dispatched_at, NOW()) > 1 
@@ -16,7 +27,6 @@ export async function GET() {
       FROM shipments s
       ORDER BY s.created_at DESC
     `);
-
     return NextResponse.json(shipments);
   } catch (err) {
     console.error("GET /api/shipments error:", err);
@@ -24,21 +34,22 @@ export async function GET() {
   }
 }
 
-// 🚚 POST new shipment (dispatch)
+// POST new shipment (dispatch)
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { hospital, address, contactPerson, contactPhone, dosimeters } = body;
+    const { hospital, address, contactPerson, contactPhone, dosimeters, courierName, courierStaff } = body;
 
     const result: any = await query(
-      `INSERT INTO shipments (destination, address, contact_person, contact_phone, status, dispatched_at) 
-       VALUES (?, ?, ?, ?, 'dispatched', NOW())`,
-      [hospital, address, contactPerson, contactPhone]
+      `INSERT INTO shipments 
+        (destination, address, contact_person, contact_phone, courier_name, courier_staff, status, dispatched_at) 
+       VALUES (?, ?, ?, ?, ?, ?, 'dispatched', NOW())`,
+      [hospital, address, contactPerson, contactPhone, courierName, courierStaff]
     );
 
     const shipmentId = result.insertId;
 
-    // Insert dosimeters + link
+    // Link dosimeters
     for (const serial of dosimeters) {
       const [dosimeterResult]: any = await query(
         `INSERT INTO dosimeters (serial_number, status, hospital_name) 
@@ -52,7 +63,8 @@ export async function POST(req: Request) {
         (await query<any>(`SELECT id FROM dosimeters WHERE serial_number=?`, [serial]))[0].id;
 
       await query(
-        `INSERT INTO shipment_dosimeters (shipment_id, dosimeter_id) VALUES (?, ?)`,
+        `INSERT INTO shipment_dosimeters (shipment_id, dosimeter_id) 
+         VALUES (?, ?)`,
         [shipmentId, dosimeterId]
       );
     }
@@ -64,7 +76,7 @@ export async function POST(req: Request) {
   }
 }
 
-// 📬 PATCH: mark shipment as received
+// PATCH: mark shipment as received
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
@@ -89,7 +101,7 @@ export async function PATCH(req: Request) {
     if (!shipmentIdToUpdate)
       return NextResponse.json({ error: "shipmentId or serialNumbers required" }, { status: 400 });
 
-    // Update shipment
+    // Update shipment to delivered
     await query(
       `UPDATE shipments 
        SET status='delivered', receiver_name=?, receiver_title=? 

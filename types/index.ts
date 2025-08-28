@@ -17,6 +17,8 @@ export interface Shipment {
   address?: string;
   contact_person: string;
   contact_phone: string;
+  courier_name?: string;
+  courier_staff?: string;
   status: 'dispatched' | 'in_transit' | 'delivered';
   dispatched_at: Date;
   estimated_delivery?: Date;
@@ -37,6 +39,8 @@ export interface DispatchFormData {
   address: string;
   contactPerson: string;
   contactPhone: string;
+  courierName: string;
+  courierStaff: string;
   dosimeters: string[];
 }
 

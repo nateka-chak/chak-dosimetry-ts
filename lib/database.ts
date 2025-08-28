@@ -38,6 +38,8 @@ const createShipments = `
     address VARCHAR(255),
     contact_person VARCHAR(255),
     contact_phone VARCHAR(50),
+    courier_name VARCHAR(255),        -- ✅ NEW COLUMN
+    courier_staff VARCHAR(255),       -- ✅ NEW COLUMN
     dispatched_by VARCHAR(255),
     status ENUM('dispatched', 'in_transit', 'delivered') DEFAULT 'dispatched',
     dispatched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
