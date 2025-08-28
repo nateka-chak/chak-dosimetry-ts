@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/UI/Card";
 import Button from "@/components/UI/Button";
+import { Input } from "@/components/UI/Input";
 
 interface RequestItem {
   id: number;
@@ -15,10 +16,25 @@ interface RequestItem {
 }
 
 export default function ApprovalsPage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // 🔄 Fetch helper (can be reused)
+  // Login handler
+  const handleLogin = () => {
+    if (username === "nathan" && password === "4477") {
+      setIsLoggedIn(true);
+      setError("");
+    } else {
+      setError("Invalid credentials. Try again.");
+    }
+  };
+
+  // 🔄 Fetch helper
   const fetchRequests = useCallback(async () => {
     try {
       setLoading(true);
@@ -32,10 +48,11 @@ export default function ApprovalsPage() {
     }
   }, []);
 
-  // Load on mount
   useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests]);
+    if (isLoggedIn) {
+      fetchRequests();
+    }
+  }, [isLoggedIn, fetchRequests]);
 
   const handleAction = async (id: number, action: "approved" | "rejected") => {
     try {
@@ -47,13 +64,51 @@ export default function ApprovalsPage() {
 
       const data = await res.json();
       if (data.success) {
-        await fetchRequests(); // ✅ refresh from backend instead of patching locally
+        await fetchRequests();
       }
     } catch (err) {
       console.error("❌ Update failed:", err);
     }
   };
 
+  if (!isLoggedIn) {
+    // Render Login Form
+    return (
+      <main className="container mx-auto px-6 py-12 flex justify-center items-center h-screen">
+        <Card className="max-w-md w-full shadow-lg rounded-2xl">
+          <CardHeader className="text-center">
+            <Lock className="mx-auto mb-2 text-gray-600" size={36} />
+            <CardTitle className="text-2xl font-bold">Login Required</CardTitle>
+            <p className="text-gray-600">Enter your credentials to continue</p>
+          </CardHeader>
+          <CardContent>
+            {error && <p className="text-red-600 mb-3 text-center">{error}</p>}
+            <div className="space-y-4">
+              <Input
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              <Input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <Button
+                className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                onClick={handleLogin}
+              >
+                Login
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
+  // Render Approvals Table
   return (
     <main className="container mx-auto px-6 py-12">
       <motion.div
@@ -82,7 +137,7 @@ export default function ApprovalsPage() {
                       <th className="px-4 py-3">Requested By</th>
                       <th className="px-4 py-3">Quantity</th>
                       <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Actions</th>
+                      {/* <th className="px-4 py-3">Actions</th> */}
                     </tr>
                   </thead>
                   <tbody>
