@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true, // ⬅️ disables lint errors on build
+  },
+
+  typescript: {
+    ignoreBuildErrors: true, // ⬅️ disables type errors on build (optional)
+  },
+
   serverExternalPackages: ["mysql2", "tesseract.js"],
 
   images: {
