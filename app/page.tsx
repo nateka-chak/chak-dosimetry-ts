@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Truck, Hospital, Bell } from "lucide-react";
-import Button from '../components/UI/Button';
+import { Truck, Hospital, Bell, PackageCheck, FileCheck2 } from "lucide-react";
+import Button from "../components/UI/Button";
 
 export default function Home() {
   const features = [
@@ -73,8 +73,8 @@ export default function Home() {
             transition={{ delay: 0.3 }}
             className="text-lg md:text-xl mb-10 max-w-3xl mx-auto"
           >
-            A comprehensive solution for managing and tracking dosimeter equipment
-            from dispatch to delivery.
+            A comprehensive solution for managing and tracking dosimeter
+            equipment from dispatch to delivery.
           </motion.p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link href="/dashboard">
@@ -94,23 +94,24 @@ export default function Home() {
       {/* Features Section */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-6">
-         <h2 className="section-title">Key Features</h2>
-<div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-  {features.map((feature, index) => (
-    <motion.div
-      key={feature.title}
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.2 }}
-      className="feature-card"
-    >
-      <div className="feature-icon">{feature.icon}</div>
-      <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-      <p className="text-gray-600">{feature.description}</p>
-    </motion.div>
-  ))}
-</div>
-
+          <h2 className="section-title">Key Features</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {features.map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.2 }}
+                className="feature-card"
+              >
+                <div className="feature-icon">{feature.icon}</div>
+                <h3 className="text-xl font-semibold mb-2">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-600">{feature.description}</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -118,21 +119,66 @@ export default function Home() {
       <section className="py-20 bg-gray-50">
         <div className="container mx-auto px-6">
           <h2 className="section-title">How It Works</h2>
-<div className="grid grid-cols-1 md:grid-cols-4 gap-10">
-  {steps.map((step, index) => (
-    <motion.div
-      key={step.title}
-      initial={{ opacity: 0, y: 40 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.2 }}
-      className="step-card"
-    >
-      <div className="step-circle">{step.step}</div>
-      <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
-      <p className="text-gray-600">{step.description}</p>
-    </motion.div>
-  ))}
-</div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+            {steps.map((step, index) => (
+              <motion.div
+                key={step.title}
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.2 }}
+                className="step-card"
+              >
+                <div className="step-circle">{step.step}</div>
+                <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
+                <p className="text-gray-600">{step.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Internal Requests & Approvals Section */}
+      <section className="py-20 bg-white border-t border-gray-200">
+        <div className="container mx-auto px-6 text-center">
+          <h2 className="section-title">Internal Inventory Management</h2>
+          <p className="text-gray-600 mb-10">
+            Manage requests and approvals for dosimeters from CHAK’s internal
+            inventory store.
+          </p>
+          <div className="flex flex-col md:flex-row gap-6 justify-center">
+            <Link href="/requests">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                className="feature-card cursor-pointer"
+              >
+                <div className="feature-icon bg-blue-600">
+                  <PackageCheck className="text-white" size={28} />
+                </div>
+                <h3 className="text-xl font-semibold mt-4">
+                  Request Dosimeters
+                </h3>
+                <p className="text-gray-600">
+                  Submit a request from the CHAK inventory for hospital use.
+                </p>
+              </motion.div>
+            </Link>
+            <Link href="/approvals">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                className="feature-card cursor-pointer"
+              >
+                <div className="feature-icon bg-green-600">
+                  <FileCheck2 className="text-white" size={28} />
+                </div>
+                <h3 className="text-xl font-semibold mt-4">
+                  Approve Requests
+                </h3>
+                <p className="text-gray-600">
+                  Review and approve staff dosimeter requests.
+                </p>
+              </motion.div>
+            </Link>
+          </div>
         </div>
       </section>
     </main>

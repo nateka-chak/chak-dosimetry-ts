@@ -16,7 +16,7 @@ const pool = mysql.createPool(dbConfig);
 export const getDB = () => pool;
 
 // ✅ Table definitions
-const createdosimeters = `
+const createDosimeters = `
   CREATE TABLE IF NOT EXISTS dosimeters (
     id INT AUTO_INCREMENT PRIMARY KEY,
     serial_number VARCHAR(255) UNIQUE NOT NULL,
@@ -38,8 +38,8 @@ const createShipments = `
     address VARCHAR(255),
     contact_person VARCHAR(255),
     contact_phone VARCHAR(50),
-    courier_name VARCHAR(255),        -- ✅ NEW COLUMN
-    courier_staff VARCHAR(255),       -- ✅ NEW COLUMN
+    courier_name VARCHAR(255),
+    courier_staff VARCHAR(255),
     dispatched_by VARCHAR(255),
     status ENUM('dispatched', 'in_transit', 'delivered') DEFAULT 'dispatched',
     dispatched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -48,7 +48,7 @@ const createShipments = `
   )
 `;
 
-const createShipmentdosimeters = `
+const createShipmentDosimeters = `
   CREATE TABLE IF NOT EXISTS shipment_dosimeters (
     id INT AUTO_INCREMENT PRIMARY KEY,
     shipment_id INT,
@@ -68,14 +68,26 @@ const createNotifications = `
   )
 `;
 
+const createRequests = `
+  CREATE TABLE IF NOT EXISTS requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    hospital VARCHAR(255) NOT NULL,
+    requested_by VARCHAR(255) NOT NULL,
+    quantity INT NOT NULL,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`;
+
 // ✅ Initialize DB
 export const initDatabase = async (): Promise<void> => {
   const connection = await pool.getConnection();
   try {
-    await connection.query(createdosimeters);
+    await connection.query(createDosimeters);
     await connection.query(createShipments);
-    await connection.query(createShipmentdosimeters);
+    await connection.query(createShipmentDosimeters);
     await connection.query(createNotifications);
+    await connection.query(createRequests);
 
     console.log("✅ Database tables initialized successfully");
   } catch (error) {
