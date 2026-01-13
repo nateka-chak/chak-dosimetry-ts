@@ -48,7 +48,19 @@ export async function POST(req: Request) {
       [hospital, requestedBy, phone, location, quantity, documentPath]
     );
 
-    return NextResponse.json({ success: true, id: (result as any).insertId });
+    const requestId = (result as any).insertId;
+
+    // ✅ Create notification for new request
+    const notificationMessage = `New request from ${hospital} for ${quantity} item${quantity !== 1 ? 's' : ''}. Requested by: ${requestedBy}`;
+    await db.query(
+      "INSERT INTO notifications (type, message, is_read) VALUES (?, ?, 0)",
+      ['request', notificationMessage]
+    ).catch((err) => {
+      console.error("Failed to create notification for new request:", err);
+      // Don't fail the request creation if notification fails
+    });
+
+    return NextResponse.json({ success: true, id: requestId });
   } catch (error: any) {
     console.error("❌ Error inserting request:", error);
     return NextResponse.json(

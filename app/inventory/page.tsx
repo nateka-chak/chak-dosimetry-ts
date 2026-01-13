@@ -26,6 +26,12 @@ import {
   Calendar,
   Eye,
   MoreHorizontal,
+  Glasses,
+  Computer,
+  Box,
+  Shield,
+  Pill,
+  LayoutGrid,
 } from "lucide-react";
 import Link from "next/link";
 import { API_BASE_URL } from "@/lib/config";
@@ -38,7 +44,10 @@ import Loader from "@/components/UI/Loader";
 
 type InventoryRecord = {
   id: number;
-  serial_number: string;
+  category?: string;
+  serial_number?: string;
+  sku?: string;
+  name?: string;
   model?: string;
   type?: string;
   status?: string;
@@ -47,6 +56,8 @@ type InventoryRecord = {
   calibration_date?: string | null;
   expiry_date?: string | null;
   comment?: string;
+  quantity?: number;
+  unit?: string;
 };
 
 type InventoryStats = {
@@ -104,6 +115,7 @@ export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [hospitalFilter, setHospitalFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("dosimeter");
 
   // UI State
   const [showModal, setShowModal] = useState(false);
@@ -114,11 +126,22 @@ export default function InventoryPage() {
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
+  // Category configuration - ordered as requested
+  const categories = [
+    { key: "dosimeter", label: "Dosimeters", icon: Package },
+    { key: "spectacles", label: "Lead Spectacles", icon: Glasses },
+    { key: "face_mask", label: "Face Masks", icon: Shield },
+    { key: "medicine", label: "Medicines", icon: Pill },
+    { key: "machine", label: "Hospital Machines", icon: Computer },
+    { key: "accessory", label: "Accessories", icon: Box },
+    { key: "all", label: "All Items", icon: LayoutGrid },
+  ];
+
   // Fetch inventory data
   const fetchInventory = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/api/inventory`);
+      const res = await fetch(`${API_BASE_URL}/api/inventory?category=${categoryFilter}`);
       const data = await res.json();
       if (data?.stats && data?.records) {
         setStats(data.stats);
@@ -133,7 +156,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     fetchInventory();
-  }, []);
+  }, [categoryFilter]);
 
   // Hospitals list for filter
   const hospitals = useMemo(() => {
@@ -186,13 +209,20 @@ export default function InventoryPage() {
       const res = await fetch(`${API_BASE_URL}/api/inventory`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, payload: { id, ...data } }),
+        body: JSON.stringify({ 
+          action, 
+          payload: { 
+            id, 
+            category: categoryFilter,
+            ...data 
+          } 
+        }),
       });
 
       if (res.ok) {
         fetchInventory();
       } else {
-        console.error(`Failed to ${action} dosimeter`);
+        console.error(`Failed to ${action} item`);
       }
     } catch (error) {
       console.error(`Error during ${action}:`, error);
@@ -222,20 +252,21 @@ export default function InventoryPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this dosimeter?")) return;
+    const categoryLabel = categories.find(c => c.key === categoryFilter)?.label || "item";
+    if (!confirm(`Are you sure you want to delete this ${categoryLabel.toLowerCase()}?`)) return;
     
     try {
       const res = await fetch(`${API_BASE_URL}/api/inventory`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id, category: categoryFilter }),
       });
 
       if (res.ok) {
         fetchInventory();
       }
     } catch (error) {
-      console.error("Error deleting dosimeter:", error);
+      console.error("Error deleting item:", error);
     }
   };
 
@@ -308,10 +339,10 @@ const buttonStyles = {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 font-heading">Inventory Management</h1>
-            <p className="text-gray-600 mt-2">Track and manage all dosimeters in the system</p>
+            <p className="text-gray-600 mt-2">Track and manage all inventory items in the system</p>
           </div>
           <div className="flex items-center space-x-3 mt-4 lg:mt-0">
   <Button
@@ -338,20 +369,46 @@ const buttonStyles = {
     leftIcon={<Plus className="h-4 w-4" />}
     className={buttonStyles.primary}
   >
-    Add Dosimeter
+    Add {categories.find(c => c.key === categoryFilter)?.label || "Item"}
   </Button>
 </div>
+        </div>
+
+        {/* Category Tabs */}
+        <div className="mb-6 border-b border-gray-200">
+          <nav className="flex space-x-1" aria-label="Categories">
+            {categories.map((category) => {
+              const Icon = category.icon;
+              const isActive = categoryFilter === category.key;
+              return (
+                <button
+                  key={category.key}
+                  onClick={() => setCategoryFilter(category.key)}
+                  className={`
+                    flex items-center space-x-2 px-4 py-3 font-medium text-sm rounded-t-lg transition-all duration-200
+                    ${isActive
+                      ? "bg-primary-50 text-primary-700 border-b-2 border-primary-600"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    }
+                  `}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{category.label}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {[
             { 
-              label: "Total Devices", 
+              label: "Total Items", 
               value: stats.total, 
               icon: Package, 
               color: "blue",
-              description: "All dosimeters"
+              description: categories.find(c => c.key === categoryFilter)?.label || "All items"
             },
             { 
               label: "Available", 
@@ -472,7 +529,10 @@ const buttonStyles = {
 
             {/* Filter Stats */}
             <div className="mt-4 flex items-center space-x-4 text-sm text-gray-600">
-              <span>Showing {filteredStats.total} of {records.length} dosimeters</span>
+              <span>
+                Showing {filteredStats.total} of {records.length}{" "}
+                {categories.find((c) => c.key === categoryFilter)?.label.toLowerCase() || "items"}
+              </span>
               {filteredStats.total !== records.length && (
                 <>
                   <span>•</span>
@@ -817,6 +877,7 @@ const buttonStyles = {
         {/* Add/Edit Modal */}
         <AddDosimeterModal
           open={showModal}
+          category={categoryFilter}
           onClose={() => {
             setShowModal(false);
             setEditRecord(null);

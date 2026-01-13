@@ -20,7 +20,7 @@ export default function Home() {
     {
       icon: <Truck className="text-white" size={24} />,
       title: "Real-time Tracking",
-      description: "Monitor the status of your dosimeters from dispatch to delivery with live updates.",
+      description: "Monitor item status from dispatch to delivery with live updates.",
     },
     {
       icon: <Hospital className="text-white" size={24} />,
@@ -30,7 +30,7 @@ export default function Home() {
     {
       icon: <Bell className="text-white" size={24} />,
       title: "Instant Notifications",
-      description: "Get notified immediately when dosimeters are received by hospitals.",
+      description: "Get notified immediately when items are received by hospitals.",
     },
   ];
 
@@ -38,7 +38,7 @@ export default function Home() {
     {
       step: "1",
       title: "Dispatch",
-      description: "CHAK dispatches dosimeters with serial numbers and records them in the system.",
+      description: "CHAK dispatches items with serial numbers and records them in the system.",
     },
     {
       step: "2",
@@ -53,7 +53,7 @@ export default function Home() {
     {
       step: "4",
       title: "Notification",
-      description: "CHAK receives instant notification with all details of the received dosimeters.",
+      description: "CHAK receives instant notification with all details of the received items.",
     },
   ];
 
@@ -71,13 +71,13 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/20"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
           <div className="text-center max-w-4xl mx-auto">
-            <motion.h1
+          <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7 }}
               className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight"
             >
-              Track Dosimeters with{" "}
+              Track Inventory Items with{" "}
               <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                 Precision
               </span>
@@ -88,7 +88,7 @@ export default function Home() {
               transition={{ delay: 0.3, duration: 0.7 }}
               className="text-xl md:text-2xl mb-10 text-blue-100 max-w-3xl mx-auto leading-relaxed"
             >
-              A comprehensive solution for managing and tracking dosimeter equipment from dispatch to delivery with real-time visibility.
+              A comprehensive solution for managing and tracking all radiation safety assets from dispatch to delivery with real-time visibility.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -201,7 +201,7 @@ export default function Home() {
               How It Works
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Simple four-step process for efficient dosimeter management
+              Simple four-step process for efficient inventory management
             </p>
           </motion.div>
 
@@ -351,7 +351,7 @@ export default function Home() {
               Internal Inventory Management
             </h2>
             <p className="text-xl text-blue-200 max-w-2xl mx-auto">
-              Streamline requests and approvals for dosimeters from CHAK's internal inventory
+              Streamline requests and approvals for all items from CHAK's internal inventory
             </p>
           </motion.div>
 
@@ -368,7 +368,7 @@ export default function Home() {
                     <PackageCheck className="text-white" size={24} />
                   </div>
                   <h3 className="text-2xl font-semibold mb-4">
-                    Request Dosimeters
+                    Request Items
                   </h3>
                   <p className="text-blue-100 leading-relaxed mb-6">
                     Submit a request from the CHAK inventory for hospital use with detailed tracking and approval workflow.
@@ -396,7 +396,7 @@ export default function Home() {
                     Approve Requests
                   </h3>
                   <p className="text-blue-100 leading-relaxed mb-6">
-                    Review and approve staff dosimeter requests with comprehensive audit trails and documentation.
+                    Review and approve staff item requests with comprehensive audit trails and documentation.
                   </p>
                   <div className="flex items-center text-blue-300 font-medium group-hover:text-white transition-colors duration-300">
                     Manage Approvals

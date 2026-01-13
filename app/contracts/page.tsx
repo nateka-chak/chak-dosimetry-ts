@@ -50,6 +50,12 @@ type Contract = {
   id?: number;
   facility_name: string;
   dosimeters: number;
+  spectacles?: number;
+  face_masks?: number;
+  medicines?: number;
+  machines?: number;
+  accessories?: number;
+  item_type?: string; // 'dosimeter' | 'spectacles' | 'face_mask' | 'medicine' | 'machine' | 'accessory' | 'all'
   start_date?: string | null;
   end_date?: string | null;
   status?: 'active' | 'expired' | 'terminated' | 'pending' | string;
@@ -737,11 +743,12 @@ export default function ContractsPage() {
     return diffDays <= 30 && diffDays >= 0;
   };
 
-  const exportContracts = () => {
+  // Export to CSV/Excel
+  const exportContracts = (format: 'csv' | 'excel' = 'csv') => {
     const headers = [
       'Facility Name',
       'Facility Type',
-      'Dosimeters',
+      'Items Count',
       'Status',
       'Priority',
       'Contract Value',
@@ -750,10 +757,12 @@ export default function ContractsPage() {
       'Contact Person',
       'Contact Phone',
       'Contact Email',
+      'Renewal Reminder',
+      'Has Document',
       'Notes'
     ];
     
-    const rows = contracts.map(contract => [
+    const rows = filteredContracts.map(contract => [
       contract.facility_name,
       contract.facility_type || '',
       String(contract.dosimeters),
@@ -765,20 +774,209 @@ export default function ContractsPage() {
       contract.contact_person || '',
       contract.contact_phone || '',
       contract.contact_email || '',
+      contract.renewal_reminder ? 'Yes' : 'No',
+      contract.scanned_document ? 'Yes' : 'No',
       contract.notes || ''
     ]);
 
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
+    if (format === 'excel') {
+      // Create Excel-compatible XML
+      const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  <Worksheet ss:Name="Contracts">
+    <Table>
+      <Row>
+        ${headers.map(h => `<Cell><Data ss:Type="String">${h}</Data></Cell>`).join('')}
+      </Row>
+      ${rows.map(row => `
+      <Row>
+        ${row.map(cell => `<Cell><Data ss:Type="String">${String(cell).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</Data></Cell>`).join('')}
+      </Row>
+      `).join('')}
+    </Table>
+  </Worksheet>
+</Workbook>`;
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([xmlContent], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `chak_contracts_${new Date().toISOString().split('T')[0]}.xls`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } else {
+      // CSV export
+      const csvContent = [headers, ...rows]
+        .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `chak_contracts_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  // Export to Word document
+  const exportToWord = () => {
+    const today = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    // Create Word-compatible HTML
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>CHAK Contracts Summary</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    h1 { color: #1e40af; border-bottom: 2px solid #1e40af; padding-bottom: 10px; }
+    h2 { color: #374151; margin-top: 30px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th { background-color: #1e40af; color: white; padding: 12px 8px; text-align: left; }
+    td { padding: 10px 8px; border-bottom: 1px solid #e5e7eb; }
+    tr:nth-child(even) { background-color: #f9fafb; }
+    .summary-box { background-color: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    .summary-item { display: inline-block; margin-right: 40px; }
+    .summary-value { font-size: 24px; font-weight: bold; color: #1e40af; }
+    .summary-label { color: #6b7280; font-size: 14px; }
+    .status-active { color: #059669; font-weight: bold; }
+    .status-expired { color: #dc2626; font-weight: bold; }
+    .status-pending { color: #d97706; font-weight: bold; }
+    .priority-high { color: #dc2626; }
+    .priority-medium { color: #d97706; }
+    .priority-low { color: #059669; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>CHAK Contracts Summary Report</h1>
+  <p>Generated on: ${today}</p>
+  
+  <div class="summary-box">
+    <div class="summary-item">
+      <div class="summary-value">${contracts.length}</div>
+      <div class="summary-label">Total Contracts</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-value">${displayStats.active_contracts || 0}</div>
+      <div class="summary-label">Active Contracts</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-value">${displayStats.active_dosimeters || 0}</div>
+      <div class="summary-label">Total Items</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-value">${formatCurrency(displayStats.total_contract_value || 0)}</div>
+      <div class="summary-label">Total Value</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-value">${displayStats.expiring_soon || 0}</div>
+      <div class="summary-label">Expiring Soon</div>
+    </div>
+  </div>
+
+  <h2>Contract Details</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Facility</th>
+        <th>Type</th>
+        <th>Items</th>
+        <th>Status</th>
+        <th>Priority</th>
+        <th>Value</th>
+        <th>Period</th>
+        <th>Contact</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filteredContracts.map(contract => `
+      <tr>
+        <td><strong>${contract.facility_name}</strong></td>
+        <td>${contract.facility_type || '-'}</td>
+        <td>${contract.dosimeters}</td>
+        <td class="status-${contract.status}">${contract.status?.toUpperCase() || '-'}</td>
+        <td class="priority-${contract.priority}">${contract.priority?.toUpperCase() || '-'}</td>
+        <td>${formatCurrency(contract.contract_value)}</td>
+        <td>${formatDate(contract.start_date)} - ${formatDate(contract.end_date)}</td>
+        <td>${contract.contact_person || '-'}<br/>${contract.contact_phone || ''}</td>
+      </tr>
+      `).join('')}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <p>This report was generated by CHAK Dosimetry Tracking System.</p>
+    <p>For questions, please contact the system administrator.</p>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `chak_contracts_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `chak_contracts_report_${new Date().toISOString().split('T')[0]}.doc`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Send renewal notifications for expiring contracts
+  const sendRenewalNotifications = async () => {
+    setActionLoading(true);
+    setError(null);
+    
+    try {
+      const expiringContracts = contracts.filter(c => {
+        if (!c.end_date) return false;
+        const endDate = new Date(c.end_date);
+        const today = new Date();
+        const diffTime = endDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 30 && diffDays >= 0 && c.status === 'active';
+      });
+
+      if (expiringContracts.length === 0) {
+        setError('No contracts expiring within 30 days.');
+        setActionLoading(false);
+        return;
+      }
+
+      // Send notifications for each expiring contract
+      for (const contract of expiringContracts) {
+        const daysLeft = Math.ceil(
+          (new Date(contract.end_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+        );
+        
+        const message = `Contract with ${contract.facility_name} expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Please contact them for renewal.`;
+        
+        await fetch(`${API_BASE_URL}/api/notifications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'contract_renewal',
+            message,
+          }),
+        });
+      }
+
+      alert(`Sent ${expiringContracts.length} renewal notification${expiringContracts.length !== 1 ? 's' : ''} successfully!`);
+    } catch (err: any) {
+      console.error('Error sending renewal notifications:', err);
+      setError(err?.message ?? 'Failed to send renewal notifications');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // Handle form input changes
@@ -817,9 +1015,9 @@ export default function ContractsPage() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 font-heading">Contract Management</h1>
-            <p className="text-slate-600 mt-2">Manage and track all dosimeter contracts with healthcare facilities</p>
+            <p className="text-slate-600 mt-2">Manage and track all item contracts with healthcare facilities</p>
           </div>
-          <div className="flex items-center space-x-3 mt-4 lg:mt-0">
+          <div className="flex items-center space-x-3 mt-4 lg:mt-0 flex-wrap gap-2">
             <Button
               variant="outline"
               onClick={fetchContracts}
@@ -828,14 +1026,38 @@ export default function ContractsPage() {
             >
               Refresh
             </Button>
-            <Button
-              variant="outline"
-              onClick={exportContracts}
-              leftIcon={<DownloadCloud className="h-4 w-4" />}
-              className={buttonStyles.outline}
-            >
-              Export CSV
-            </Button>
+            <div className="relative group">
+              <Button
+                variant="outline"
+                leftIcon={<DownloadCloud className="h-4 w-4" />}
+                className={buttonStyles.outline}
+              >
+                Export
+              </Button>
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 hidden group-hover:block">
+                <button
+                  onClick={() => exportContracts('csv')}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Export to CSV</span>
+                </button>
+                <button
+                  onClick={() => exportContracts('excel')}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                >
+                  <BarChart2 className="h-4 w-4" />
+                  <span>Export to Excel</span>
+                </button>
+                <button
+                  onClick={exportToWord}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                >
+                  <File className="h-4 w-4" />
+                  <span>Export to Word</span>
+                </button>
+              </div>
+            </div>
             <Button
               variant="outline"
               onClick={() => setShowSettings(true)}
@@ -892,7 +1114,7 @@ export default function ContractsPage() {
               trend: '+12%'
             },
             {
-              label: 'Active Dosimeters',
+              label: 'Active Items',
               value: displayStats.active_dosimeters || 0,
               icon: CheckCircle2,
               color: 'emerald',
@@ -975,22 +1197,33 @@ export default function ContractsPage() {
                 size="sm" 
                 leftIcon={<Mail className="h-4 w-4" />}
                 className={buttonStyles.outline}
+                onClick={sendRenewalNotifications}
+                disabled={actionLoading}
               >
-                Send Renewals
+                {actionLoading ? 'Sending...' : 'Send Renewal Reminders'}
               </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
                 leftIcon={<Bell className="h-4 w-4" />}
                 className={buttonStyles.outline}
+                onClick={() => {
+                  const expiring = displayStats.expiring_soon || 0;
+                  if (expiring > 0) {
+                    alert(`You have ${expiring} contract${expiring !== 1 ? 's' : ''} expiring within 30 days. Click "Send Renewal Reminders" to notify facilities.`);
+                  } else {
+                    alert('No contracts expiring soon. All contracts are in good standing!');
+                  }
+                }}
               >
-                Set Reminders
+                Check Expiring ({displayStats.expiring_soon || 0})
               </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
                 leftIcon={<BarChart2 className="h-4 w-4" />}
                 className={buttonStyles.outline}
+                onClick={exportToWord}
               >
                 Generate Report
               </Button>
@@ -1121,8 +1354,19 @@ export default function ContractsPage() {
                   <CardContent className="space-y-4">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600 group-hover:text-slate-700 transition-colors">Dosimeters</span>
-                        <span className="text-lg font-semibold text-slate-900 group-hover:text-slate-800 transition-colors">{contract.dosimeters}</span>
+                        <span className="text-sm text-slate-600 group-hover:text-slate-700 transition-colors">Total Items</span>
+                        <span className="text-lg font-semibold text-slate-900 group-hover:text-slate-800 transition-colors">
+                          {(contract.dosimeters || 0) + (contract.spectacles || 0) + (contract.face_masks || 0) + (contract.medicines || 0) + (contract.machines || 0) + (contract.accessories || 0)}
+                        </span>
+                      </div>
+                      {/* Item breakdown */}
+                      <div className="grid grid-cols-3 gap-2 text-xs text-slate-500">
+                        {contract.dosimeters > 0 && <span>📊 {contract.dosimeters} dosimeters</span>}
+                        {contract.spectacles > 0 && <span>👓 {contract.spectacles} spectacles</span>}
+                        {contract.face_masks > 0 && <span>😷 {contract.face_masks} masks</span>}
+                        {contract.medicines > 0 && <span>💊 {contract.medicines} medicines</span>}
+                        {contract.machines > 0 && <span>🖥️ {contract.machines} machines</span>}
+                        {contract.accessories > 0 && <span>📦 {contract.accessories} accessories</span>}
                       </div>
 
                       {contract.contract_value && (
@@ -1549,13 +1793,44 @@ export default function ContractsPage() {
                         placeholder="e.g., Hospital, Clinic, Laboratory"
                       />
 
+                    <Input
+                      label="Dosimeters"
+                      type="number"
+                      value={editingContract?.dosimeters || 0}
+                      onChange={(e) => handleInputChange('dosimeters', parseInt(e.target.value) || 0)}
+                      placeholder="Number of dosimeters"
+                    />
+
+                    <div className="grid grid-cols-2 gap-3">
                       <Input
-                        label="Dosimeters *"
+                        label="Spectacles"
                         type="number"
-                        value={editingContract?.dosimeters || 0}
-                        onChange={(e) => handleInputChange('dosimeters', parseInt(e.target.value) || 0)}
-                        placeholder="Number of dosimeters"
+                        value={editingContract?.spectacles || 0}
+                        onChange={(e) => handleInputChange('spectacles', parseInt(e.target.value) || 0)}
+                        placeholder="0"
                       />
+                      <Input
+                        label="Face Masks"
+                        type="number"
+                        value={editingContract?.face_masks || 0}
+                        onChange={(e) => handleInputChange('face_masks', parseInt(e.target.value) || 0)}
+                        placeholder="0"
+                      />
+                      <Input
+                        label="Medicines"
+                        type="number"
+                        value={editingContract?.medicines || 0}
+                        onChange={(e) => handleInputChange('medicines', parseInt(e.target.value) || 0)}
+                        placeholder="0"
+                      />
+                      <Input
+                        label="Machines"
+                        type="number"
+                        value={editingContract?.machines || 0}
+                        onChange={(e) => handleInputChange('machines', parseInt(e.target.value) || 0)}
+                        placeholder="0"
+                      />
+                    </div>
 
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>

@@ -53,6 +53,12 @@ export async function PUT(
     const {
       facility_name,
       dosimeters,
+      spectacles,
+      face_masks,
+      medicines,
+      machines,
+      accessories,
+      item_type,
       start_date,
       end_date,
       status,
@@ -68,7 +74,7 @@ export async function PUT(
 
     // Check if contract exists
     const existing = await query<any>(
-      "SELECT id FROM contracts WHERE id = ?",
+      "SELECT id, status FROM contracts WHERE id = ?",
       [contractId]
     );
     
@@ -76,10 +82,13 @@ export async function PUT(
       return NextResponse.json({ error: "Contract not found" }, { status: 404 });
     }
 
+    const previousStatus = existing[0].status;
+
     // Update contract
     await query(
       `UPDATE contracts SET 
-        facility_name = ?, dosimeters = ?, start_date = ?, end_date = ?, 
+        facility_name = ?, dosimeters = ?, spectacles = ?, face_masks = ?, medicines = ?, machines = ?, accessories = ?, item_type = ?,
+        start_date = ?, end_date = ?, 
         status = ?, notes = ?, contact_person = ?, contact_phone = ?, 
         contact_email = ?, facility_type = ?, priority = ?, contract_value = ?,
         renewal_reminder = ?, updated_at = CURRENT_TIMESTAMP
@@ -87,6 +96,12 @@ export async function PUT(
       [
         facility_name,
         dosimeters ?? 0,
+        spectacles ?? 0,
+        face_masks ?? 0,
+        medicines ?? 0,
+        machines ?? 0,
+        accessories ?? 0,
+        item_type ?? 'all',
         start_date ?? null,
         end_date ?? null,
         status ?? "active",
@@ -107,6 +122,29 @@ export async function PUT(
       "SELECT * FROM contracts WHERE id = ?",
       [contractId]
     );
+
+    // Create notification if status changed
+    if (previousStatus !== status) {
+      try {
+        let notificationMessage = '';
+        if (status === 'active' && previousStatus !== 'active') {
+          notificationMessage = `Contract with ${facility_name} has been renewed/activated.`;
+        } else if (status === 'expired') {
+          notificationMessage = `Contract with ${facility_name} has expired. Please contact them for renewal.`;
+        } else if (status === 'terminated') {
+          notificationMessage = `Contract with ${facility_name} has been terminated.`;
+        }
+        
+        if (notificationMessage) {
+          await query(
+            "INSERT INTO notifications (type, message, is_read, created_at) VALUES (?, ?, 0, NOW())",
+            ['contract', notificationMessage]
+          );
+        }
+      } catch (notifErr) {
+        console.error("Failed to create notification:", notifErr);
+      }
+    }
 
     return NextResponse.json(updatedContract[0]);
   } catch (error: any) {

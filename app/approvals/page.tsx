@@ -121,7 +121,13 @@ export default function ApprovalsPage() {
       if (!res.ok) throw new Error("Failed to fetch inventory");
       
       const data = await res.json();
-      setInventory(data.stock || data.available || 0);
+      const available =
+        data?.stats?.available_estimate ??
+        data?.stats?.available ??
+        data?.available ??
+        data?.stock ??
+        0;
+      setInventory(Number(available) || 0);
     } catch (err) {
       console.error("Error fetching inventory:", err);
       setInventory(0);
@@ -170,7 +176,7 @@ export default function ApprovalsPage() {
           const request = requests.find(r => r.id === id);
           if (request) {
             showNotification(
-              `Approved request from ${request.hospital} for ${quantity} dosimeters`,
+              `Approved request from ${request.hospital} for ${quantity} item${quantity !== 1 ? 's' : ''}`,
               'success'
             );
           }
@@ -218,9 +224,17 @@ export default function ApprovalsPage() {
       return;
     }
 
-    // For relative paths, construct full URL and open in new tab
-    const fullUrl = `${API_BASE_URL}${documentUrl.startsWith('/') ? '' : '/'}${documentUrl}`;
-    window.open(fullUrl, '_blank');
+    // For relative paths, construct URL with basePath
+    // Documents are in public/uploads, served as static files by Next.js
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname;
+      const basePath = currentPath.includes('/chak-dosimetry-ts') ? '/chak-dosimetry-ts' : '';
+      // Ensure documentUrl starts with /
+      const docPath = documentUrl.startsWith('/') ? documentUrl : `/${documentUrl}`;
+      const fullUrl = `${window.location.origin}${basePath}${docPath}`;
+      console.log('Opening PDF:', fullUrl); // Debug log
+      window.open(fullUrl, '_blank');
+    }
   };
 
   // Filtered requests
@@ -326,7 +340,7 @@ export default function ApprovalsPage() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 font-heading">Approvals Dashboard</h1>
-            <p className="text-gray-600 mt-2">Review and manage dosimeter requests from healthcare facilities</p>
+            <p className="text-gray-600 mt-2">Review and manage item requests from healthcare facilities</p>
           </div>
           <div className="flex items-center space-x-3 mt-4 lg:mt-0">
             <Button
@@ -354,7 +368,7 @@ export default function ApprovalsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Available Dosimeters</p>
+                  <p className="text-sm font-medium text-gray-600">Available Items</p>
                   <p className="text-3xl font-bold text-gray-900 mt-1">{inventory}</p>
                   <p className="text-xs text-gray-500 mt-1">Ready for allocation</p>
                 </div>

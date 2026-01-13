@@ -10,8 +10,9 @@ export async function GET() {
     console.log("🔍 Fetching notifications from database...");
 
     // Get all notifications
+    // Use only columns that are guaranteed to exist in the current schema
     const [notifications] = await db.query<RowDataPacket[]>(
-      "SELECT id, type, message, is_read, created_at, updated_at FROM notifications ORDER BY created_at DESC, id DESC"
+      "SELECT id, type, message, is_read, created_at FROM notifications ORDER BY created_at DESC, id DESC LIMIT 1000"
     );
 
     console.log("✅ Notifications fetched:", notifications.length);
@@ -67,8 +68,8 @@ export async function POST(request: Request) {
 
     const db = getDB();
     const [result] = await db.execute<ResultSetHeader>(
-      `INSERT INTO notifications (type, message, is_read, created_at, updated_at) 
-       VALUES (?, ?, 0, NOW(), NOW())`,
+      `INSERT INTO notifications (type, message, is_read, created_at) 
+       VALUES (?, ?, 0, NOW())`,
       [type, message]
     );
 
@@ -102,7 +103,7 @@ export async function PATCH(request: Request) {
     if (markAllAsRead) {
       // Mark all notifications as read
       const [result] = await db.execute<ResultSetHeader>(
-        "UPDATE notifications SET is_read = 1, updated_at = NOW() WHERE is_read = 0"
+        "UPDATE notifications SET is_read = 1 WHERE is_read = 0"
       );
       
       return NextResponse.json({
@@ -119,7 +120,7 @@ export async function PATCH(request: Request) {
     }
 
     const [result] = await db.execute<ResultSetHeader>(
-      "UPDATE notifications SET is_read = ?, updated_at = NOW() WHERE id = ?",
+      "UPDATE notifications SET is_read = ? WHERE id = ?",
       [is_read ? 1 : 0, id]
     );
 

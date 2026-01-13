@@ -8,3 +8,25 @@ export const API_BASE_URL =
   (isProd
     ? "http://197.232.14.151:4488/chak-dosimetry-ts"
     : "http://localhost:4488");
+
+// Helper function to get API URL with basePath for client-side fetch calls
+// This ensures cookies are sent properly when using the same origin
+export const getApiUrl = (path: string): string => {
+  // If path already includes http, return as is
+  if (path.startsWith('http')) {
+    return path;
+  }
+  
+  // In browser, detect basePath from current URL
+  if (typeof window !== 'undefined') {
+    const currentPath = window.location.pathname;
+    const basePath = currentPath.includes('/chak-dosimetry-ts') ? '/chak-dosimetry-ts' : '';
+    // Ensure path starts with /
+    const apiPath = path.startsWith('/') ? path : `/${path}`;
+    return `${window.location.origin}${basePath}${apiPath}`;
+  }
+  
+  // Server-side: use API_BASE_URL
+  const apiPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE_URL}${apiPath}`;
+};

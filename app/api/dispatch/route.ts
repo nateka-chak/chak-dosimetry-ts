@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
        VALUES (?, ?, ?)`,
       [
         "dispatch",
-        `New shipment dispatched to ${hospital} by ${courierName} (${courierStaff}) with ${dosimeterIds.length} dosimeters`,
+        `New shipment dispatched to ${hospital} by ${courierName} (${courierStaff}) with ${dosimeterIds.length} item${dosimeterIds.length !== 1 ? 's' : ''}`,
         0,
       ]
     );

@@ -53,7 +53,7 @@ export default function DispatchForm({
     
     // Validation
     if (formData.dosimeters.length === 0) {
-      showNotification("Please add at least one dosimeter.", "error");
+      showNotification("Please add at least one item.", "error");
       return;
     }
 
@@ -74,7 +74,7 @@ export default function DispatchForm({
     const success = await onSubmit({ ...formData, newStatus });
     
     if (success) {
-      showNotification("✅ Dosimeters dispatched successfully!", "success");
+      showNotification("✅ Items dispatched successfully!", "success");
       // Reset form
       setFormData({
         dispatchType: "toHospital",
@@ -90,14 +90,14 @@ export default function DispatchForm({
       });
     } else {
       showNotification(
-        "❌ Failed to dispatch dosimeters. Please try again.",
+        "❌ Failed to dispatch items. Please try again.",
         "error"
       );
     }
   };
 
   const supplyItems = [
-    { key: "device", label: "Dosimeter Device", icon: Package },
+    { key: "device", label: "Device", icon: Package },
     { key: "case", label: "Protective Case", icon: Package },
     { key: "pin", label: "Charging Pin", icon: Package },
     { key: "strap", label: "Wrist Strap", icon: Package },
@@ -315,12 +315,12 @@ export default function DispatchForm({
           </div>
         </div>
 
-        {/* Dosimeter Picker - Full Width */}
+        {/* Item Picker - Full Width */}
         <div className="mt-8">
           <div className="bg-gray-50 rounded-xl p-6">
             <label className="block text-sm font-semibold text-gray-900 mb-4 flex items-center space-x-2">
               <Package className="h-5 w-5 text-primary-600" />
-              <span>Select Dosimeters *</span>
+              <span>Select Items *</span>
               <span className="text-sm font-normal text-gray-500">
                 ({formData.dosimeters.length} selected)
               </span>
@@ -346,7 +346,7 @@ export default function DispatchForm({
         <div className="mt-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
           <div className="text-sm text-gray-600">
             <p>
-              <strong>{formData.dosimeters.length}</strong> dosimeters selected • 
+              <strong>{formData.dosimeters.length}</strong> item{formData.dosimeters.length !== 1 ? 's' : ''} selected • 
               Status: <span className="font-semibold text-primary-600">
                 {formData.dispatchType === "toHospital" ? "To Hospital" : "To CHAK"}
               </span>
@@ -367,7 +367,7 @@ export default function DispatchForm({
               ) : (
                 <>
                   <Truck className="h-5 w-5" />
-                  <span>Dispatch {formData.dosimeters.length} Dosimeters</span>
+                  <span>Dispatch {formData.dosimeters.length} Item{formData.dosimeters.length !== 1 ? 's' : ''}</span>
                 </>
               )}
             </Button>

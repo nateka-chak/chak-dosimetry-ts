@@ -4,6 +4,7 @@ import { Truck, Package, CheckCircle, MapPin, Calendar, User, RotateCcw, Eye, Ph
 import { Shipment } from '@/types';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import { useRouter } from "next/navigation";
 import { API_BASE_URL } from '@/lib/config';
 
 interface ShipmentCardProps {
@@ -24,6 +25,7 @@ export default function ShipmentCard({ shipment, onViewDetails }: ShipmentCardPr
   const [showSerials, setShowSerials] = useState(false);
   const [dosimeters, setDosimeters] = useState<Dosimeter[]>([]);
   const [loadingSerials, setLoadingSerials] = useState(false);
+  const router = useRouter();
   const status = shipment.status as string;
 
   const statusConfig = {
@@ -142,6 +144,15 @@ export default function ShipmentCard({ shipment, onViewDetails }: ShipmentCardPr
     setShowSerials(!showSerials);
   };
 
+  const handleQuickReceive = () => {
+    const params = new URLSearchParams();
+    params.set("shipmentId", String(shipment.id));
+    if (shipment.destination) {
+      params.set("hospital", shipment.destination);
+    }
+    router.push(`/receive?${params.toString()}`);
+  };
+
   // Mock route points for the map visualization
   const routePoints = [
     { position: 0, label: 'Warehouse' },
@@ -243,24 +254,24 @@ export default function ShipmentCard({ shipment, onViewDetails }: ShipmentCardPr
       </div>
 
       {/* Content */}
-      <div className="p-6">
-        {/* Enhanced Progress Section */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm font-semibold text-gray-800">Delivery Progress</span>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs font-medium text-gray-600">{config.progress}% complete</span>
-              <div className={`w-2 h-2 rounded-full ${config.bgColor} animate-pulse`}></div>
+      <div className="p-4">
+        {/* Compact Progress Section */}
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-semibold text-gray-800">Delivery Progress</span>
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xs font-medium text-gray-600">{config.progress}%</span>
+              <div className={`w-1.5 h-1.5 rounded-full ${config.bgColor} animate-pulse`}></div>
             </div>
           </div>
           
           {/* Animated Progress Bar */}
-          <div className="w-full bg-gray-200 rounded-full h-3 mb-4 overflow-hidden">
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-3 overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${config.progress}%` }}
               transition={{ duration: 1.5, ease: "easeOut" }}
-              className={`h-3 rounded-full ${config.bgColor} relative overflow-hidden`}
+              className={`h-2 rounded-full ${config.bgColor} relative overflow-hidden`}
             >
               {/* Shimmer effect for in_transit status */}
               {status === 'in_transit' && (
@@ -273,8 +284,8 @@ export default function ShipmentCard({ shipment, onViewDetails }: ShipmentCardPr
             </motion.div>
           </div>
 
-          {/* Enhanced Status Timeline */}
-          <div className="flex justify-between relative mt-6">
+          {/* Compact Status Timeline */}
+          <div className="flex justify-between relative mt-4">
             {['dispatched', 'in_transit', 'delivered'].map((stage, index) => {
               const isCompleted = 
                 (stage === 'dispatched' && ['dispatched', 'in_transit', 'delivered', 'returned'].includes(status)) ||
@@ -290,21 +301,21 @@ export default function ShipmentCard({ shipment, onViewDetails }: ShipmentCardPr
                 <div key={stage} className="flex flex-col items-center relative z-10">
                   <motion.div
                     whileHover={{ scale: 1.1 }}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+                    className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
                       isCompleted 
                         ? `${config.bgColor} border-${config.color}-500 text-white`
                         : 'bg-white border-gray-300 text-gray-400'
                     } ${
-                      isCurrent ? 'ring-2 ring-offset-2 ring-opacity-50' : ''
+                      isCurrent ? 'ring-2 ring-offset-1 ring-opacity-50' : ''
                     } ${isCurrent ? `ring-${config.color}-500` : ''}`}
                   >
                     {isCompleted ? (
-                      <CheckCircle className="h-5 w-5" />
+                      <CheckCircle className="h-4 w-4" />
                     ) : (
-                      <Clock className="h-5 w-5" />
+                      <Clock className="h-4 w-4" />
                     )}
                   </motion.div>
-                  <span className={`text-xs mt-2 font-semibold ${
+                  <span className={`text-xs mt-1 font-medium ${
                     isCompleted ? 'text-gray-900' : 'text-gray-500'
                   }`}>
                     {stage.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
@@ -313,7 +324,7 @@ export default function ShipmentCard({ shipment, onViewDetails }: ShipmentCardPr
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className={`w-2 h-2 rounded-full ${config.bgColor} mt-1`}
+                      className={`w-1.5 h-1.5 rounded-full ${config.bgColor} mt-0.5`}
                     />
                   )}
                 </div>
@@ -321,7 +332,7 @@ export default function ShipmentCard({ shipment, onViewDetails }: ShipmentCardPr
             })}
             
             {/* Connecting Line */}
-            <div className="absolute top-5 left-5 right-5 h-0.5 bg-gray-300 -z-10">
+            <div className="absolute top-4 left-4 right-4 h-0.5 bg-gray-300 -z-10">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${config.progress}%` }}
@@ -332,20 +343,20 @@ export default function ShipmentCard({ shipment, onViewDetails }: ShipmentCardPr
           </div>
         </div>
 
-        {/* NEW: Dosimeter Serials Section */}
-        <div className="mb-6 bg-gray-50 rounded-xl p-4 border border-gray-200">
+        {/* Compact Item Serials Section */}
+        <div className="mb-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
           <button
             onClick={handleToggleSerials}
-            className="w-full flex items-center justify-between p-3 rounded-lg bg-white border border-gray-300 hover:border-gray-400 transition-all duration-200"
+            className="w-full flex items-center justify-between p-2 rounded-lg bg-white border border-gray-300 hover:border-gray-400 transition-all duration-200"
           >
-            <div className="flex items-center space-x-3">
-              <Package className="h-5 w-5 text-gray-600" />
+            <div className="flex items-center space-x-2">
+              <Package className="h-4 w-4 text-gray-600" />
               <div className="text-left">
-                <h4 className="font-semibold text-gray-900">Dosimeter Serials</h4>
-                <p className="text-sm text-gray-600">
+                <h4 className="text-sm font-semibold text-gray-900">Item Serials</h4>
+                <p className="text-xs text-gray-600">
                   {dosimeters.length > 0 
-                    ? `${dosimeters.length} dosimeters in this shipment` 
-                    : 'Click to view dosimeter serials'
+                    ? `${dosimeters.length} item${dosimeters.length !== 1 ? 's' : ''} in this shipment` 
+                    : 'Click to view item serials'
                   }
                 </p>
               </div>
@@ -355,9 +366,9 @@ export default function ShipmentCard({ shipment, onViewDetails }: ShipmentCardPr
               transition={{ duration: 0.2 }}
             >
               {showSerials ? (
-                <ChevronUp className="h-5 w-5 text-gray-500" />
+                <ChevronUp className="h-4 w-4 text-gray-500" />
               ) : (
-                <ChevronDown className="h-5 w-5 text-gray-500" />
+                <ChevronDown className="h-4 w-4 text-gray-500" />
               )}
             </motion.div>
           </button>
@@ -368,157 +379,143 @@ export default function ShipmentCard({ shipment, onViewDetails }: ShipmentCardPr
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-4"
+              className="mt-3"
             >
               {loadingSerials ? (
-                <div className="flex items-center justify-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                  <span className="ml-2 text-sm text-gray-600">Loading serials...</span>
+                <div className="flex items-center justify-center py-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-xs text-gray-600">Loading...</span>
                 </div>
               ) : dosimeters.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
                   {dosimeters.map((dosimeter, index) => (
                     <motion.div
                       key={dosimeter.id}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                      transition={{ delay: index * 0.05 }}
+                      className="flex items-center space-x-2 p-2 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
                     >
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-xs font-medium text-gray-900 truncate">
                           {dosimeter.serial_number}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
-                          {dosimeter.model || dosimeter.type || 'Dosimeter'} • {dosimeter.status || 'Unknown'}
+                          {dosimeter.model || dosimeter.type || 'Item'} • {dosimeter.status || 'Unknown'}
                         </p>
                       </div>
                     </motion.div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-6 text-gray-500">
-                  <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No dosimeter data available</p>
-                  <p className="text-xs mt-1">Try refreshing or check API configuration</p>
+                <div className="text-center py-4 text-gray-500">
+                  <Package className="h-6 w-6 mx-auto mb-1 opacity-50" />
+                  <p className="text-xs">No item data available</p>
                 </div>
               )}
             </motion.div>
           )}
         </div>
 
-        {/* Enhanced Shipment Details Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Location & Contact Info */}
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-              <MapPin className={`h-5 w-5 text-${config.color}-600 mt-0.5 flex-shrink-0`} />
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Delivery Address</p>
-                <p className="text-sm text-gray-700 mt-1">{shipment.address || 'Address not specified'}</p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-              <User className={`h-5 w-5 text-${config.color}-600 mt-0.5 flex-shrink-0`} />
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Contact Person</p>
-                <p className="text-sm text-gray-700 mt-1">{shipment.contact_person || 'Not specified'}</p>
-              </div>
+        {/* Compact Shipment Details Grid */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="flex items-start space-x-2 p-2 bg-gray-50 rounded-lg">
+            <MapPin className={`h-4 w-4 text-${config.color}-600 mt-0.5 flex-shrink-0`} />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-900">Address</p>
+              <p className="text-xs text-gray-700 mt-0.5 truncate">{shipment.address || 'Not specified'}</p>
             </div>
           </div>
 
-          {/* Timeline & Courier Info */}
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-              <Calendar className={`h-5 w-5 text-${config.color}-600 mt-0.5 flex-shrink-0`} />
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Dispatch Date</p>
-                <p className="text-sm text-gray-700 mt-1">
-                  {new Date(shipment.dispatched_at).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
+          <div className="flex items-start space-x-2 p-2 bg-gray-50 rounded-lg">
+            <User className={`h-4 w-4 text-${config.color}-600 mt-0.5 flex-shrink-0`} />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-900">Contact</p>
+              <p className="text-xs text-gray-700 mt-0.5 truncate">{shipment.contact_person || 'Not specified'}</p>
             </div>
-
-            {shipment.status === 'returned' && shipment.returned_at && (
-              <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                <RotateCcw className={`h-5 w-5 text-${config.color}-600 mt-0.5 flex-shrink-0`} />
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">Return Date</p>
-                  <p className="text-sm text-gray-700 mt-1">
-                    {new Date(shipment.returned_at).toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
 
-        {/* Enhanced Courier & Items Info */}
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 mb-6 border border-gray-200">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="text-center p-3 bg-white rounded-lg">
-              <p className="font-semibold text-gray-700">Courier Service</p>
-              <p className="text-gray-600 mt-1">{shipment.courier_name || 'Not assigned'}</p>
+          <div className="flex items-start space-x-2 p-2 bg-gray-50 rounded-lg">
+            <Calendar className={`h-4 w-4 text-${config.color}-600 mt-0.5 flex-shrink-0`} />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-900">Dispatch Date</p>
+              <p className="text-xs text-gray-700 mt-0.5">
+                {new Date(shipment.dispatched_at).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric'
+                })}
+              </p>
             </div>
-            <div className="text-center p-3 bg-white rounded-lg">
-              <p className="font-semibold text-gray-700">Staff Contact</p>
-              <p className="text-gray-600 mt-1">{shipment.courier_staff || 'Not specified'}</p>
-            </div>
-            <div className="text-center p-3 bg-white rounded-lg">
-              <p className="font-semibold text-gray-700">Items Count</p>
-              <p className="text-gray-600 mt-1">{shipment.items ?? 0} units</p>
-            </div>
-            <div className="text-center p-3 bg-white rounded-lg">
-              <p className="font-semibold text-gray-700">Contact Phone</p>
-              <div className="flex items-center justify-center space-x-1 mt-1">
-                <Phone className="h-4 w-4 text-gray-400" />
-                <span className="text-gray-600">{shipment.contact_phone || 'Not provided'}</span>
-              </div>
+          </div>
+
+          <div className="flex items-start space-x-2 p-2 bg-gray-50 rounded-lg">
+            <Phone className={`h-4 w-4 text-${config.color}-600 mt-0.5 flex-shrink-0`} />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-900">Phone</p>
+              <p className="text-xs text-gray-700 mt-0.5 truncate">{shipment.contact_phone || 'Not provided'}</p>
             </div>
           </div>
         </div>
 
-        {/* Enhanced Footer Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Package className="h-4 w-4" />
+        {/* Compact Courier Info */}
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-3 mb-4 border border-gray-200">
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <p className="font-semibold text-gray-700">Courier</p>
+              <p className="text-gray-600 mt-0.5">{shipment.courier_name || 'Not assigned'}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-700">Staff</p>
+              <p className="text-gray-600 mt-0.5">{shipment.courier_staff || 'Not specified'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Compact Footer Actions */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+          <div className="flex items-center space-x-1.5 text-xs text-gray-600">
+            <Package className="h-3.5 w-3.5" />
             <span className="font-medium">
               {dosimeters.length > 0 
-                ? `${dosimeters.length} dosimeters` 
-                : 'Serials: Click to view'
+                ? `${dosimeters.length} item${dosimeters.length !== 1 ? 's' : ''}` 
+                : `${shipment.items ?? 0} items`
               }
             </span>
           </div>
           
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleTrackShipment}
-            disabled={isTracking}
-            className={`flex items-center space-x-2 px-6 py-3 ${config.bgColor} text-white rounded-xl font-semibold hover:opacity-90 transition-all duration-200 shadow-lg ${
-              isTracking ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            <motion.div
-              animate={isTracking ? { rotate: 360 } : {}}
-              transition={isTracking ? { duration: 1, repeat: Infinity, ease: "linear" } : {}}
+          <div className="flex items-center space-x-2">
+            {(status === 'dispatched' || status === 'in_transit') && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleQuickReceive}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-all duration-200 shadow-sm"
+              >
+                <CheckCircle className="h-3.5 w-3.5" />
+                <span>Receive</span>
+              </motion.button>
+            )}
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleTrackShipment}
+              disabled={isTracking}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 ${config.bgColor} text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-all duration-200 shadow-sm ${
+                isTracking ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              <Navigation className="h-4 w-4" />
-            </motion.div>
-            <span>{isTracking ? 'Tracking...' : 'Track Shipment'}</span>
-          </motion.button>
+              <motion.div
+                animate={isTracking ? { rotate: 360 } : {}}
+                transition={isTracking ? { duration: 1, repeat: Infinity, ease: "linear" } : {}}
+              >
+                <Navigation className="h-3.5 w-3.5" />
+              </motion.div>
+              <span>{isTracking ? '...' : 'Track'}</span>
+            </motion.button>
+          </div>
         </div>
       </div>
 

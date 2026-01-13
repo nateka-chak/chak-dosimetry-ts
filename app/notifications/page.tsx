@@ -337,8 +337,8 @@ export default function NotificationsPage() {
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <Bell className="h-6 w-6 text-blue-600" />
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+              <Bell className="h-6 w-6 text-white" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900 font-heading">Notifications</h1>

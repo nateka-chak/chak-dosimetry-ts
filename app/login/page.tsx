@@ -1,20 +1,20 @@
 // app/login/page.tsx
-import dynamic from "next/dynamic";
-import type { Metadata } from "next";
-import LoginForm from "@/components/auth/LoginForm";
+"use client";
 
-// Optional: SEO metadata
-export const metadata: Metadata = {
-  title: "Login | Dosimetry Tracker",
-};
-
+import { useSearchParams } from "next/navigation";
+import AuthForm from "@/components/auth/AuthForm";
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+  const mode = searchParams.get("mode") as "login" | "signup" | "forgot-password" | "reset-password" | null;
+  const token = searchParams.get("token");
+
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div className="w-full max-w-md">
-        <LoginForm />
-      </div>
-    </main>
+    <AuthForm 
+      initialMode={
+        token ? "reset-password" : 
+        (mode === "signup" || mode === "forgot-password" ? mode : "login")
+      }
+    />
   );
 }

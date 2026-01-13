@@ -1,7 +1,7 @@
 // components/Forms/ReceiveForm.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Option, ReceiveFormData } from "@/types";
 import { useNotification } from "@/components/Layout/NotificationProvider";
 import { API_BASE_URL } from "@/lib/config";
@@ -26,15 +26,26 @@ import {
 interface ReceiveFormProps {
   onSubmit: (data: ReceiveFormData) => Promise<boolean>;
   isSubmitting: boolean;
+  initialShipmentId?: number | null;
+  initialHospitalName?: string | null;
 }
 
-export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps) {
+export default function ReceiveForm({
+  onSubmit,
+  isSubmitting,
+  initialShipmentId = null,
+  initialHospitalName = null,
+}: ReceiveFormProps) {
   const { showNotification } = useNotification();
   const [activeTab, setActiveTab] = useState<"manual" | "image">("manual");
+  const autoFilledRef = useRef<{ shipmentId: number | null; hospital: string | null }>({
+    shipmentId: null,
+    hospital: null,
+  });
 
   const [formData, setFormData] = useState<ReceiveFormData>({
-    shipmentId: null,
-    hospitalName: "",
+    shipmentId: initialShipmentId,
+    hospitalName: initialHospitalName || "",
     receiverName: "",
     receiverTitle: "",
     receiveType: "fromHospital",
@@ -46,7 +57,133 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
     comment: "",
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  // Auto-fill form when shipment ID is provided
+  useEffect(() => {
+    const autoFillFromShipment = async () => {
+      if (initialShipmentId === null) {
+        // Still set hospital if provided without shipment
+        if (initialHospitalName) {
+          setFormData((prev) => ({
+            ...prev,
+            hospitalName: initialHospitalName,
+          }));
+        }
+        return;
+      }
+
+      // Prevent duplicate calls for the same shipment
+      if (
+        autoFilledRef.current.shipmentId === initialShipmentId &&
+        autoFilledRef.current.hospital === initialHospitalName
+      ) {
+        return;
+      }
+
+      // Mark as being processed
+      autoFilledRef.current = {
+        shipmentId: initialShipmentId,
+        hospital: initialHospitalName || null,
+      };
+
+      try {
+        // Fetch dosimeters for this shipment
+        const dosimetersRes = await fetch(
+          `${API_BASE_URL}/api/shipments/${initialShipmentId}/dosimeters`
+        ).catch(() => null);
+
+        let allDosimeters: any[] = [];
+        let shipmentStatus: string | null = null;
+
+        // Get all dosimeters for this shipment
+        if (dosimetersRes?.ok) {
+          const dosimetersJson = await dosimetersRes.json();
+          allDosimeters = dosimetersJson.data || dosimetersJson.dosimeters || [];
+          
+          // Get shipment status from first dosimeter
+          if (allDosimeters.length > 0) {
+            shipmentStatus = allDosimeters[0].status;
+          }
+        }
+
+        // Auto-determine receive type intelligently:
+        // - If coming from Quick Receive button on a dispatched/in_transit shipment, it's hospital receiving from CHAK (fromChak)
+        // - If dosimeters are already "delivered" or "returned", it's a return to CHAK
+        // - Default to "fromChak" for new shipments
+        const receiveType = 
+          shipmentStatus === 'delivered' || shipmentStatus === 'returned' || shipmentStatus === 'received'
+            ? 'fromHospital' 
+            : 'fromChak';
+
+        // Filter dosimeters based on the receiveType's expected statusFilter
+        // For "fromChak": expect ["returned", "delivered"] - but shipment dosimeters are usually "dispatched" or "in_transit"
+        // For "fromHospital": expect ["received"] - but we're receiving returns, so they might be "delivered" or "returned"
+        // Actually, when Quick Receiving, we want dosimeters that are dispatched/in_transit for fromChak
+        // And delivered/returned for fromHospital
+        const expectedStatuses = receiveType === "fromChak" 
+          ? ['dispatched', 'in_transit', 'delivered'] // Hospital receiving from CHAK
+          : ['delivered', 'returned', 'received']; // CHAK receiving returns
+
+        const dosimetersData: Option[] = allDosimeters
+          .filter((d: any) => expectedStatuses.includes(d.status))
+          .map((d: any) => ({
+            id: d.id,
+            serial_number: d.serial_number,
+            model: d.model || '',
+            type: d.type || '',
+            status: d.status || 'dispatched',
+            hospital_name: d.hospital_name || '',
+          }));
+
+        // Update form with auto-filled data - set receiveType FIRST so DosimeterPicker uses correct filter
+        setFormData((prev) => ({
+          ...prev,
+          shipmentId: initialShipmentId,
+          hospitalName: initialHospitalName || prev.hospitalName,
+          receiveType, // Set this first
+          dosimeters: dosimetersData.length > 0 ? dosimetersData : prev.dosimeters,
+        }));
+
+        // Show only ONE notification based on the result
+        if (dosimetersData.length > 0) {
+          showNotification(
+            `✅ Auto-filled ${dosimetersData.length} item(s) from shipment #${initialShipmentId}. Please review and confirm.`,
+            "success"
+          );
+        } else if (initialShipmentId && allDosimeters.length > 0) {
+          // There are dosimeters but none match the expected status
+          showNotification(
+            `⚠️ Shipment #${initialShipmentId} found with ${allDosimeters.length} item(s), but none match the expected status. Please select items manually.`,
+            "warning"
+          );
+        } else if (initialShipmentId) {
+          showNotification(
+            `⚠️ Shipment #${initialShipmentId} found, but no items found in this shipment.`,
+            "warning"
+          );
+        }
+      } catch (error) {
+        console.error("Error auto-filling from shipment:", error);
+        // Still set basic info even if fetch fails
+        setFormData((prev) => ({
+          ...prev,
+          shipmentId: initialShipmentId,
+          hospitalName: initialHospitalName || prev.hospitalName,
+        }));
+        showNotification(
+          "⚠️ Could not auto-fill items. Please select them manually.",
+          "warning"
+        );
+      }
+    };
+
+    autoFillFromShipment();
+    // Remove showNotification from dependencies to prevent re-runs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialShipmentId, initialHospitalName]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value, type } = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
     setFormData((prev) => ({
       ...prev,
@@ -110,7 +247,7 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
     e.preventDefault();
 
     if (!formData.dosimeters.length) {
-      showNotification("⚠️ Please select at least one dosimeter.", "error");
+      showNotification("⚠️ Please select at least one item.", "error");
       return;
     }
 
@@ -128,7 +265,7 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
     if (success) {
       showNotification(
         formData.receiveType === "fromHospital"
-          ? "✅ Dosimeters marked as Returned to CHAK!"
+          ? "✅ Items marked as Returned to CHAK!"
           : "✅ Receipt confirmed successfully!",
         "success"
       );
@@ -359,11 +496,11 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
               />
             </div>
 
-            {/* Dosimeter Picker - Full Width */}
+            {/* Item Picker - Full Width */}
             <div className="bg-gray-50 rounded-xl p-6">
               <label className="block text-sm font-semibold text-gray-900 mb-4 flex items-center space-x-2">
                 <Package className="h-5 w-5 text-primary-600" />
-                <span>Select Dosimeters to Confirm *</span>
+                <span>Select Items to Confirm *</span>
                 <span className="text-sm font-normal text-gray-500">
                   ({formData.dosimeters.length} selected)
                 </span>
@@ -374,8 +511,8 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
                   onChange={handleDosimeterChange}
                   statusFilter={
                     formData.receiveType === "fromChak"
-                      ? ["returned", "delivered"]   // hospital receiving from CHAK it should also have delivered
-                      : ["received"]    // CHAK receiving returns from hospital
+                      ? ["dispatched", "in_transit", "delivered"]   // hospital receiving from CHAK - items that were dispatched
+                      : ["delivered", "returned", "received"]    // CHAK receiving returns from hospital
                   }
                   pageSize={50}
                 />
@@ -386,7 +523,7 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
             <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 pt-6 border-t border-gray-200">
               <div className="text-sm text-gray-600">
                 <p>
-                  <strong>{formData.dosimeters.length}</strong> dosimeters selected • 
+                  <strong>{formData.dosimeters.length}</strong> item{formData.dosimeters.length !== 1 ? 's' : ''} selected • 
                   Type: <span className="font-semibold text-primary-600">
                     {formData.receiveType === "fromChak" ? "From CHAK" : "Hospital Return"}
                   </span>
@@ -407,7 +544,7 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
                   ) : (
                     <>
                       <CheckCircle className="h-5 w-5" />
-                      <span>Confirm Receipt of {formData.dosimeters.length} Dosimeters</span>
+                      <span>Confirm Receipt of {formData.dosimeters.length} Item{formData.dosimeters.length !== 1 ? 's' : ''}</span>
                     </>
                   )}
                 </Button>
@@ -430,7 +567,7 @@ export default function ReceiveForm({ onSubmit, isSubmitting }: ReceiveFormProps
                   <h4 className="text-sm font-semibold text-yellow-800">How Image Recognition Works</h4>
                   <p className="text-sm text-yellow-700 mt-1">
                     After uploading images, detected serial numbers will be automatically matched to your inventory. 
-                    You can review and edit the matched dosimeters in the Manual Entry tab before confirming receipt.
+                    You can review and edit the matched items in the Manual Entry tab before confirming receipt.
                   </p>
                 </div>
               </div>

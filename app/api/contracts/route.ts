@@ -20,6 +20,12 @@ export async function POST(req: Request) {
     const {
       facility_name,
       dosimeters,
+      spectacles,
+      face_masks,
+      medicines,
+      machines,
+      accessories,
+      item_type,
       start_date,
       end_date,
       status,
@@ -50,13 +56,20 @@ export async function POST(req: Request) {
 
     const result = await query<any>(
       `INSERT INTO contracts 
-        (facility_name, dosimeters, start_date, end_date, status, notes,
+        (facility_name, dosimeters, spectacles, face_masks, medicines, machines, accessories, item_type,
+         start_date, end_date, status, notes,
          contact_person, contact_phone, contact_email, facility_type,
          priority, contract_value, renewal_reminder) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         facility_name, 
-        dosimeters ?? 0, 
+        dosimeters ?? 0,
+        spectacles ?? 0,
+        face_masks ?? 0,
+        medicines ?? 0,
+        machines ?? 0,
+        accessories ?? 0,
+        item_type ?? 'all',
         start_date ?? null, 
         end_date ?? null, 
         status ?? "active", 
@@ -77,6 +90,16 @@ export async function POST(req: Request) {
       [result.insertId]
     );
 
+    // Create notification for new contract
+    try {
+      await query(
+        "INSERT INTO notifications (type, message, is_read, created_at) VALUES (?, ?, 0, NOW())",
+        ['contract', `New contract created for ${facility_name}`]
+      );
+    } catch (notifErr) {
+      console.error("Failed to create notification:", notifErr);
+    }
+
     return NextResponse.json(newContract[0], { status: 201 });
   } catch (error: any) {
     console.error("❌ POST /contracts error:", error);
@@ -89,37 +112,52 @@ export async function GET() {
   await ensureDbInitialized();
   try {
     const contracts = await query<any>(`
-      SELECT id, facility_name, dosimeters, start_date, end_date, status, notes, 
+      SELECT id, facility_name, dosimeters, spectacles, face_masks, medicines, machines, accessories, item_type,
+             start_date, end_date, status, notes, 
              contact_person, contact_phone, contact_email, facility_type,
              priority, contract_value, renewal_reminder, scanned_document,
              created_at, updated_at
       FROM contracts
       ORDER BY facility_name ASC
     `);
-    console.log("✅ contracts query result:", contracts);
+    console.log("✅ contracts query result:", contracts.length, "contracts found");
 
     const expired_contracts = await query<any>(`
       SELECT id, facility_name, dosimeters, expired_at, notes
       FROM expired_contracts
       ORDER BY expired_at DESC
     `);
-    console.log("✅ expired_contracts query result:", expired_contracts);
+    console.log("✅ expired_contracts query result:", expired_contracts.length);
 
-    const accessories = await query<any>(`
+    const contractAccessories = await query<any>(`
       SELECT id, description, quantity
       FROM contract_accessories
       ORDER BY description ASC
     `);
-    console.log("✅ contract_accessories query result:", accessories);
+    console.log("✅ contract_accessories query result:", contractAccessories.length);
 
-    const total_dosimeters =
-      contracts.reduce((s: number, c: { dosimeters: number }) => s + (Number(c.dosimeters) || 0), 0) +
-      expired_contracts.reduce((s: number, e: { dosimeters: number }) => s + (Number(e.dosimeters) || 0), 0);
+    // Calculate total items across all categories
+    const total_items = contracts.reduce((s: number, c: any) => {
+      return s + 
+        (Number(c.dosimeters) || 0) +
+        (Number(c.spectacles) || 0) +
+        (Number(c.face_masks) || 0) +
+        (Number(c.medicines) || 0) +
+        (Number(c.machines) || 0) +
+        (Number(c.accessories) || 0);
+    }, 0);
 
-    const active_dosimeters = contracts.reduce(
-      (s: number, c: { dosimeters: number }) => s + (Number(c.dosimeters) || 0),
-      0
-    );
+    const active_items = contracts
+      .filter((c: any) => c.status === 'active')
+      .reduce((s: number, c: any) => {
+        return s + 
+          (Number(c.dosimeters) || 0) +
+          (Number(c.spectacles) || 0) +
+          (Number(c.face_masks) || 0) +
+          (Number(c.medicines) || 0) +
+          (Number(c.machines) || 0) +
+          (Number(c.accessories) || 0);
+      }, 0);
 
     const expired_uncollected = expired_contracts.reduce(
       (s: number, e: { dosimeters: number }) => s + (Number(e.dosimeters) || 0),
@@ -127,9 +165,9 @@ export async function GET() {
     );
 
     const summary = {
-      total_dosimeters,
-      active_dosimeters,
-      remaining_dosimeters: Math.max(0, total_dosimeters - active_dosimeters),
+      total_dosimeters: total_items, // Keep name for backward compatibility
+      active_dosimeters: active_items, // Keep name for backward compatibility
+      remaining_dosimeters: Math.max(0, total_items - active_items),
       expired_uncollected,
       replaced_dosimeters: 0,
       active_contracts: contracts.filter((c: any) => c.status === 'active').length,
@@ -141,13 +179,13 @@ export async function GET() {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays <= 30 && diffDays >= 0;
       }).length,
-      total_contract_value: contracts.reduce((sum: number, c: any) => sum + (c.contract_value || 0), 0),
+      total_contract_value: contracts.reduce((sum: number, c: any) => sum + (Number(c.contract_value) || 0), 0),
     };
 
     return NextResponse.json({
       contracts,
       expired_contracts,
-      accessories,
+      accessories: contractAccessories,
       summary,
     });
   } catch (err: any) {

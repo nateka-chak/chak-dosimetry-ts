@@ -138,8 +138,8 @@ export async function POST(request: NextRequest) {
     const notifType = finalShipmentStatus === "returned" ? "return" : "reception";
     const notifMessage =
       finalShipmentStatus === "returned"
-        ? `${hospital} has returned ${receivedCount} dosimeter(s). Receiver: ${receiver} (${receiverTitle})`
-        : `${hospital} has received ${receivedCount} dosimeter(s). Receiver: ${receiver} (${receiverTitle})`;
+        ? `${hospital} has returned ${receivedCount} item${receivedCount !== 1 ? 's' : ''}. Receiver: ${receiver} (${receiverTitle})`
+        : `${hospital} has received ${receivedCount} item${receivedCount !== 1 ? 's' : ''}. Receiver: ${receiver} (${receiverTitle})`;
 
     await conn.execute(
       `INSERT INTO notifications (type, message, is_read)
@@ -153,8 +153,8 @@ export async function POST(request: NextRequest) {
       success: true,
       message:
         finalShipmentStatus === "returned"
-          ? "Dosimeters returned successfully"
-          : "Dosimeters received successfully",
+          ? "Items returned successfully"
+          : "Items received successfully",
       data: {
         receivedCount,
         shipmentId: shipmentIdToUpdate,

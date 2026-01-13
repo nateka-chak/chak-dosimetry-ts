@@ -95,9 +95,15 @@ function StatusModal({ isOpen, onClose, status, count, shipments }: StatusModalP
                           </div>
                           <div>
                             <h4 className="font-semibold text-gray-900">{shipment.destination}</h4>
-                            <p className="text-sm text-gray-500">Serial: {shipment.serialNumber}</p>
                             <p className="text-sm text-gray-500">
-                              Dispatched: {new Date(shipment.dispatchDate).toLocaleDateString()}
+                              Shipment ID: #{shipment.id} • Items: {shipment.items || 0}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Dispatched: {new Date(shipment.dispatched_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
                             </p>
                           </div>
                         </div>
@@ -224,7 +230,14 @@ function TrackingModal({ isOpen, onClose, shipment }: { isOpen: boolean; onClose
                   {shipment.status === 'delivered' && 'Successfully Delivered'}
                 </h3>
                 <p className="text-gray-600">
-                  Serial: <strong>{shipment.serialNumber}</strong>
+                  Shipment ID: <strong>#{shipment.id}</strong> • Items: <strong>{shipment.items || 0}</strong>
+                </p>
+                <p className="text-gray-600 text-sm mt-1">
+                  Dispatched: <strong>{new Date(shipment.dispatched_at).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}</strong>
                 </p>
               </div>
             </div>
@@ -409,9 +422,15 @@ export default function Dashboard({ shipments = [] }: DashboardProps) {
                       </div>
                       <div>
                         <h4 className="font-semibold text-gray-900">{shipment.destination}</h4>
-                        <p className="text-sm text-gray-500">Serial: {shipment.serialNumber}</p>
+                        <p className="text-sm text-gray-500">
+                          Shipment ID: #{shipment.id} • Items: {shipment.items || 0}
+                        </p>
                         <p className="text-xs text-gray-400">
-                          {new Date(shipment.dispatchDate).toLocaleDateString()}
+                          Dispatched: {new Date(shipment.dispatched_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
                         </p>
                       </div>
                     </div>

@@ -37,10 +37,11 @@ export async function PATCH(
       [action, comment || null, id]
     );
 
+    const request = rows[0];
+    const { hospital, requested_by, quantity } = request;
+
     // ✅ 3. If approved, optionally adjust inventory (optional logic)
     if (action === "approved") {
-      const { quantity } = rows[0];
-
       await db.query(
         `
         UPDATE inventory 
@@ -51,6 +52,20 @@ export async function PATCH(
         [quantity]
       );
     }
+
+    // ✅ 4. Create notification for approval/rejection
+    const notificationType = action === "approved" ? "approval" : "rejection";
+    const notificationMessage = action === "approved"
+      ? `Request from ${hospital} for ${quantity} item${quantity !== 1 ? 's' : ''} has been approved. Requested by: ${requested_by}`
+      : `Request from ${hospital} for ${quantity} item${quantity !== 1 ? 's' : ''} has been rejected${comment ? `: ${comment}` : ''}. Requested by: ${requested_by}`;
+
+    await db.query(
+      "INSERT INTO notifications (type, message, is_read) VALUES (?, ?, 0)",
+      [notificationType, notificationMessage]
+    ).catch((err) => {
+      console.error("Failed to create notification for approval/rejection:", err);
+      // Don't fail the approval/rejection if notification fails
+    });
 
     return NextResponse.json({
       success: true,

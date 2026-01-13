@@ -37,7 +37,12 @@ export const useNotification = () => {
 // Function to save notification to database
 const saveNotificationToDB = async (message: string, type: string) => {
   try {
-    const response = await fetch('/api/notifications', {
+    // Use absolute URL for API calls
+    const apiUrl = typeof window !== 'undefined' 
+      ? `${window.location.origin}/api/notifications`
+      : '/api/notifications';
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -110,6 +115,7 @@ const enhanceNotificationType = (message: string, type: NotificationType): strin
 
 export default function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const [recentMessages, setRecentMessages] = useState<Set<string>>(new Set());
 
   const showNotification = async (
     message: string, 
@@ -117,18 +123,45 @@ export default function NotificationProvider({ children }: { children: ReactNode
     duration = 5000,
     action?: NotificationData['action']
   ) => {
+    // Deduplication: Check if the same message was shown recently (within last 3 seconds)
+    const messageKey = `${message}-${type}`;
+    if (recentMessages.has(messageKey)) {
+      console.log('Duplicate notification prevented:', message);
+      return;
+    }
+
+    // Add to recent messages set
+    setRecentMessages((prev) => new Set(prev).add(messageKey));
+    
+    // Remove from recent messages after 3 seconds
+    setTimeout(() => {
+      setRecentMessages((prev) => {
+        const updated = new Set(prev);
+        updated.delete(messageKey);
+        return updated;
+      });
+    }, 3000);
+
     const id = Math.random().toString(36).substring(2, 15);
     const notification: NotificationData = { id, message, type, duration, action };
     
-    // Save to database for persistence (don't await to avoid blocking UI)
+    // Save to database for persistence (await to ensure it's saved)
     const dbType = enhanceNotificationType(message, type);
-    saveNotificationToDB(message, dbType).then(success => {
+    try {
+      const success = await saveNotificationToDB(message, dbType);
       if (!success) {
         console.warn('Notification was shown but failed to save to database');
       }
-    });
+    } catch (error) {
+      console.error('Error saving notification to database:', error);
+    }
     
     setNotifications((prev) => {
+      // Check for duplicates in current notifications
+      const isDuplicate = prev.some(n => n.message === message && n.type === type);
+      if (isDuplicate) {
+        return prev; // Don't add duplicate
+      }
       // Limit to 5 notifications at once to prevent overflow
       const updated = [...prev, notification].slice(-5);
       return updated;

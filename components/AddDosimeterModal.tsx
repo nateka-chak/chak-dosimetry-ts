@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Upload, FileText, Package, Calendar, User, Phone, Building2, CheckCircle2, AlertCircle } from "lucide-react";
+import { X, Upload, FileText, Package, Calendar, User, Phone, Building2, CheckCircle2, AlertCircle, Glasses, Shield, Pill, Computer, Box } from "lucide-react";
 import { Input } from "@/components/UI/Input";
 import Button from "@/components/UI/Button";
 import { Card, CardContent } from "@/components/UI/Card";
 import { API_BASE_URL } from "@/lib/config";
 
-type DosimeterForm = {
+type ItemForm = {
   serial_number: string;
   model?: string;
   type?: string;
@@ -29,8 +29,19 @@ type DosimeterForm = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved?: () => void;
   editRecord?: any;
+  category?: string;
+};
+
+// Category configuration with icons and labels
+const categoryConfig: Record<string, { label: string; icon: any; color: string }> = {
+  dosimeter: { label: "Dosimeter", icon: Package, color: "blue" },
+  spectacles: { label: "Lead Spectacles", icon: Glasses, color: "purple" },
+  face_mask: { label: "Face Mask", icon: Shield, color: "green" },
+  medicine: { label: "Medicine", icon: Pill, color: "red" },
+  machine: { label: "Hospital Machine", icon: Computer, color: "slate" },
+  accessory: { label: "Accessory", icon: Box, color: "amber" },
 };
 
 export default function AddDosimeterModal({
@@ -38,11 +49,12 @@ export default function AddDosimeterModal({
   onClose,
   onSaved,
   editRecord,
+  category = "dosimeter",
 }: Props) {
-  const [form, setForm] = useState<DosimeterForm>({
+  const [form, setForm] = useState<ItemForm>({
     serial_number: "",
     model: "",
-    type: "",
+    type: category, // Set type to the current category
     status: "available",
     hospital_name: "",
     contact_person: "",
@@ -64,16 +76,23 @@ export default function AddDosimeterModal({
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Get category info
+  const currentCategoryInfo = categoryConfig[category] || categoryConfig.dosimeter;
+  const CategoryIcon = currentCategoryInfo.icon;
+
   // Initialize form when editRecord changes
   useEffect(() => {
     if (editRecord) {
-      setForm(editRecord);
+      setForm({
+        ...editRecord,
+        type: editRecord.type || category, // Ensure type is set
+      });
       setMode("manual");
     } else {
       setForm({
         serial_number: "",
         model: "",
-        type: "",
+        type: category, // Set type to the current category for new items
         status: "available",
         hospital_name: "",
         contact_person: "",
@@ -88,13 +107,13 @@ export default function AddDosimeterModal({
         strap_clip: false,
       });
     }
-  }, [editRecord, open]);
+  }, [editRecord, open, category]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type, checked } = e.target as HTMLInputElement;
-    setForm((prev: DosimeterForm) => ({
+    setForm((prev: ItemForm) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
@@ -116,7 +135,10 @@ export default function AddDosimeterModal({
 
     try {
       const action = editRecord ? "update" : "add";
-      const payload = editRecord ? { ...form, id: editRecord.id } : form;
+      // Ensure type is set to the category - this is critical for proper categorization
+      const payload = editRecord 
+        ? { ...form, id: editRecord.id, category, type: category } 
+        : { ...form, category, type: category };
 
       const res = await fetch(`${API_BASE_URL}/api/inventory`, {
         method: "PATCH",
@@ -127,11 +149,11 @@ export default function AddDosimeterModal({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to save dosimeter");
+        throw new Error(data.error || `Failed to save ${currentCategoryInfo.label.toLowerCase()}`);
       }
 
       setSaving(false);
-      onSaved();
+      onSaved?.();
       onClose();
     } catch (err: any) {
       setSaving(false);
@@ -217,7 +239,7 @@ export default function AddDosimeterModal({
       setTimeout(() => {
         setSaving(false);
         setSelectedFileName(null);
-        onSaved();
+        onSaved?.();
         onClose();
       }, 500);
 
@@ -329,22 +351,22 @@ export default function AddDosimeterModal({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
-                      <Package className="h-6 w-6" />
+                      <CategoryIcon className="h-6 w-6" />
                     </div>
                     <div>
                       <h2 className="text-xl font-bold">
                         {editRecord
-                          ? "Update Dosimeter"
+                          ? `Update ${currentCategoryInfo.label}`
                           : mode === "manual"
-                          ? "Add New Dosimeter"
-                          : "Bulk Upload Dosimeters"}
+                          ? `Add New ${currentCategoryInfo.label}`
+                          : `Bulk Upload ${currentCategoryInfo.label}s`}
                       </h2>
                       <p className="text-slate-200 text-sm">
                         {editRecord 
-                          ? "Update existing dosimeter information"
+                          ? `Update existing ${currentCategoryInfo.label.toLowerCase()} information`
                           : mode === "manual"
-                          ? "Add a single dosimeter to inventory"
-                          : "Upload multiple dosimeters via file"
+                          ? `Add a single ${currentCategoryInfo.label.toLowerCase()} to inventory`
+                          : `Upload multiple ${currentCategoryInfo.label.toLowerCase()}s via file`
                         }
                       </p>
                     </div>
@@ -361,7 +383,7 @@ export default function AddDosimeterModal({
                 {!editRecord && (
                   <div className="flex space-x-1 bg-white/10 p-1 rounded-lg mt-4 backdrop-blur-sm">
                     {[
-                      { key: "manual" as const, label: "Manual Entry", icon: Package },
+                      { key: "manual" as const, label: "Manual Entry", icon: CategoryIcon },
                       { key: "bulk" as const, label: "Bulk Upload", icon: Upload },
                     ].map((tab) => (
                       <button
@@ -593,7 +615,7 @@ export default function AddDosimeterModal({
                         disabled={saving}
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                       >
-                        {saving ? "Saving..." : editRecord ? "Update Dosimeter" : "Add Dosimeter"}
+                        {saving ? "Saving..." : editRecord ? `Update ${currentCategoryInfo.label}` : `Add ${currentCategoryInfo.label}`}
                       </Button>
                     </div>
                   </form>

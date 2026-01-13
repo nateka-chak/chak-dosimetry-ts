@@ -87,8 +87,9 @@ const createNotifications = `
     id INT AUTO_INCREMENT PRIMARY KEY,
     type VARCHAR(50) NOT NULL,
     message TEXT NOT NULL,
-    is_read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   )
 `;
 
@@ -153,10 +154,24 @@ const createContracts = `
     id INT AUTO_INCREMENT PRIMARY KEY,
     facility_name VARCHAR(255) NOT NULL,
     dosimeters INT NOT NULL DEFAULT 0,
+    spectacles INT DEFAULT 0,
+    face_masks INT DEFAULT 0,
+    medicines INT DEFAULT 0,
+    machines INT DEFAULT 0,
+    accessories INT DEFAULT 0,
+    item_type VARCHAR(50) DEFAULT 'all',
     start_date DATE NULL,
     end_date DATE NULL,
-    status ENUM('active','expired','terminated') DEFAULT 'active',
+    status ENUM('active','expired','terminated','pending') DEFAULT 'active',
     notes TEXT NULL,
+    contact_person VARCHAR(255) NULL,
+    contact_phone VARCHAR(50) NULL,
+    contact_email VARCHAR(255) NULL,
+    facility_type VARCHAR(100) NULL,
+    priority ENUM('low','medium','high') DEFAULT 'medium',
+    contract_value DECIMAL(12,2) DEFAULT 0,
+    renewal_reminder BOOLEAN DEFAULT FALSE,
+    scanned_document VARCHAR(500) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   )
@@ -194,6 +209,99 @@ const createExpiredContracts = `
   )
 `;
 
+const createHospitals = `
+  CREATE TABLE IF NOT EXISTS hospitals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(191) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+  )
+`;
+
+const createUsers = `
+  CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(191) NOT NULL UNIQUE,
+    passwordHash VARCHAR(191) NOT NULL,
+    role ENUM('ADMIN', 'HOSPITAL') NOT NULL DEFAULT 'HOSPITAL',
+    resetRequired BOOLEAN NOT NULL DEFAULT FALSE,
+    hospitalId INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (hospitalId) REFERENCES hospitals(id) ON DELETE SET NULL ON UPDATE CASCADE
+  )
+`;
+
+// Unified items table for all inventory categories
+const createItems = `
+  CREATE TABLE IF NOT EXISTS items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    category VARCHAR(50) NOT NULL DEFAULT 'dosimeter',
+    serial_number VARCHAR(255) UNIQUE,
+    sku VARCHAR(100),
+    name VARCHAR(255),
+    model VARCHAR(100),
+    type VARCHAR(100),
+    description TEXT,
+    status ENUM('available', 'dispatched', 'in_transit', 'received', 'retired', 'expired', 'lost', 'returned') DEFAULT 'available',
+    quantity INT DEFAULT 1,
+    unit VARCHAR(50) DEFAULT 'pcs',
+    location VARCHAR(255),
+    hospital_name VARCHAR(255),
+    contact_person VARCHAR(255),
+    contact_phone VARCHAR(50),
+    leasing_period VARCHAR(100),
+    calibration_date DATE,
+    expiry_date DATE,
+    warranty_until DATE,
+    is_consumable BOOLEAN DEFAULT FALSE,
+    batch_number VARCHAR(100),
+    comment TEXT,
+    dispatched_at TIMESTAMP NULL,
+    received_at TIMESTAMP NULL,
+    received_by VARCHAR(255),
+    receiver_title VARCHAR(255),
+    -- Condition checkboxes (for dosimeters and accessories)
+    dosimeter_device BOOLEAN DEFAULT FALSE,
+    dosimeter_case BOOLEAN DEFAULT FALSE,
+    pin_holder BOOLEAN DEFAULT FALSE,
+    strap_clip BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_category (category),
+    INDEX idx_status (status),
+    INDEX idx_serial (serial_number),
+    INDEX idx_sku (sku)
+  )
+`;
+
+// Unified history table for all item types
+const createItemHistory = `
+  CREATE TABLE IF NOT EXISTS item_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    item_id INT NOT NULL,
+    category VARCHAR(50) NOT NULL DEFAULT 'dosimeter',
+    action VARCHAR(100) NOT NULL,
+    hospital_name VARCHAR(255) NULL,
+    actor VARCHAR(255) DEFAULT 'system',
+    notes TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_item (item_id),
+    INDEX idx_category (category),
+    INDEX idx_created (created_at)
+  )
+`;
+
+// System settings table for dynamic categories
+const createSystemSettings = `
+  CREATE TABLE IF NOT EXISTS system_settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    setting_key VARCHAR(100) NOT NULL UNIQUE,
+    setting_value JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  )
+`;
+
 
 // ✅ Initialize DB
 export const initDatabase = async (): Promise<void> => {
@@ -212,6 +320,17 @@ export const initDatabase = async (): Promise<void> => {
     await connection.query(createContractAccessories);
     await connection.query(createContractSummary);
     await connection.query(createExpiredContracts);
+    await connection.query(createHospitals);
+    await connection.query(createUsers);
+    await connection.query(createItems);
+    await connection.query(createItemHistory);
+    await connection.query(createSystemSettings);
+
+    // Insert default categories if not exists
+    await connection.query(`
+      INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES 
+      ('inventory_categories', '["dosimeter", "spectacles", "face_mask", "medicine", "machine", "accessory"]')
+    `);
 
     console.log("✅ Database tables initialized successfully");
   } catch (error) {
