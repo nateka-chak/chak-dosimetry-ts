@@ -10,97 +10,91 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log("📦 Incoming dispatch payload:", body);
 
-    // Allow multiple naming variations from frontend
     const hospital = body.hospital || body.hospitalName || null;
     const address = body.address || body.location || null;
     const contactPerson = body.contactPerson || body.contactName || null;
     const contactPhone = body.contactPhone || body.phone || body.contact || null;
-    const courierName = body.courier_name || body.courierName || null;   // ✅ courier_name
-    const courierStaff = body.courier_staff || body.courierStaff || null; // ✅ courier_staff
-    const dosimeters: string[] = body.dosimeters || body.serials || [];
+    const courierName = body.courier_name || body.courierName || null;
+    const courierStaff = body.courier_staff || body.courierStaff || null;
+    const dosimeterIds: number[] = body.dosimeterIds || []; // ✅ New: array of dosimeter IDs
+    const comment = body.comment || null;
 
-    // Validation
+    // ✅ Condition fields (optional, batch applies same condition to all)
+    const { dosimeter_device, dosimeter_case, pin_holder, strap_clip } = body;
+
     if (
       !hospital ||
       !contactPerson ||
       !contactPhone ||
       !courierName ||
       !courierStaff ||
-      !Array.isArray(dosimeters) ||
-      dosimeters.length === 0
+      !Array.isArray(dosimeterIds) ||
+      dosimeterIds.length === 0
     ) {
       return NextResponse.json(
-        { success: false, error: "All fields (including courier) are required" },
+        { success: false, error: "All fields (including dosimeters) are required" },
         { status: 400 }
       );
     }
 
-    // Clean serials
-    const serials: string[] = dosimeters
-      .map((s: string) => (typeof s === "string" ? s.trim() : ""))
-      .filter((s: string) => s.length > 0);
-
-    if (serials.length === 0) {
+        // ✅ Validate hospital exists
+    const [hospitalCheck] = await conn.execute<RowDataPacket[]>(
+      `SELECT COUNT(*) as c FROM dosimeters WHERE hospital_name = ?`,
+      [hospital]
+    );
+    if ((hospitalCheck as any)[0].c === 0) {
       return NextResponse.json(
-        { success: false, error: "At least one valid serial number is required" },
+        { success: false, error: "Invalid hospital. Not found in system." },
         { status: 400 }
       );
     }
 
     await conn.beginTransaction();
 
-    // Insert shipment with full details
+    // ✅ Create shipment
     const [shipmentRes] = await conn.execute<ResultSetHeader>(
       `INSERT INTO shipments 
-        (destination, address, contact_person, contact_phone, courier_name, courier_staff, status, dispatched_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'dispatched', NOW())`,
-      [hospital, address, contactPerson, contactPhone, courierName, courierStaff]
+        (destination, address, contact_person, contact_phone, courier_name, courier_staff, status, dispatched_at, comment)
+       VALUES (?, ?, ?, ?, ?, ?, 'dispatched', NOW(), ?)`,
+      [hospital, address, contactPerson, contactPhone, courierName, courierStaff, comment]
     );
-    const shipmentId = shipmentRes.insertId;
+    const shipmentId = (shipmentRes as any).insertId;
 
-    // For each dosimeter
-    for (const serial of serials) {
-      const [existing] = await conn.execute<RowDataPacket[]>(
-        `SELECT id FROM dosimeters WHERE serial_number = ?`,
-        [serial]
-      );
+    // ✅ Update all selected dosimeters in one batch
+    await conn.query(
+      `UPDATE dosimeters
+          SET status = 'dispatched',
+              dispatched_at = NOW(),
+              hospital_name = ?,
+              dosimeter_device = ?,
+              dosimeter_case = ?,
+              pin_holder = ?,
+              strap_clip = ?
+        WHERE id IN (?) AND status = 'available'`,
+      [
+        hospital,
+        dosimeter_device ? 1 : 0,
+        dosimeter_case ? 1 : 0,
+        pin_holder ? 1 : 0,
+        strap_clip ? 1 : 0,
+        dosimeterIds,
+      ]
+    );
 
-      let dosimeterId: number;
+    // ✅ Link dosimeters to this shipment
+    const shipmentValues = dosimeterIds.map((id) => [shipmentId, id]);
+    await conn.query(
+      `INSERT INTO shipment_dosimeters (shipment_id, dosimeter_id) VALUES ?`,
+      [shipmentValues]
+    );
 
-      if (existing.length > 0) {
-        dosimeterId = (existing[0] as any).id;
-
-        await conn.execute(
-          `UPDATE dosimeters
-             SET status = 'dispatched',
-                 dispatched_at = NOW(),
-                 hospital_name = ?
-           WHERE serial_number = ?`,
-          [hospital, serial]
-        );
-      } else {
-        const [ins] = await conn.execute<ResultSetHeader>(
-          `INSERT INTO dosimeters (serial_number, status, hospital_name, dispatched_at)
-           VALUES (?, 'dispatched', ?, NOW())`,
-          [serial, hospital]
-        );
-        dosimeterId = ins.insertId;
-      }
-
-      await conn.execute(
-        `INSERT INTO shipment_dosimeters (shipment_id, dosimeter_id)
-         VALUES (?, ?)`,
-        [shipmentId, dosimeterId]
-      );
-    }
-
-    // Create notification
+    // ✅ Add notification
     await conn.execute(
       `INSERT INTO notifications (type, message, is_read)
        VALUES (?, ?, ?)`,
       [
         "dispatch",
-        `New shipment dispatched to ${hospital} by ${courierName} (${courierStaff}) with ${serials.length} dosimeters`,
+        `New shipment dispatched to ${hospital} by ${courierName} (${courierStaff}) with ${dosimeterIds.length} dosimeters`,
         0,
       ]
     );
@@ -110,7 +104,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Dosimeters dispatched successfully",
-      data: { shipmentId, dispatchedCount: serials.length },
+      data: { shipmentId, dispatchedCount: dosimeterIds.length },
     });
   } catch (err) {
     try {
@@ -146,6 +140,24 @@ export async function GET() {
     console.error("❌ Error fetching shipments:", err);
     return NextResponse.json(
       { success: false, error: "Failed to fetch shipments" },
+      { status: 500 }
+    );
+  }
+}
+
+// ✅ New endpoint: fetch available dosimeters for dropdown
+export async function GET_AVAILABLE() {
+  try {
+    const pool = getDB();
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT id, serial_number FROM dosimeters WHERE status = 'available' ORDER BY id ASC`
+    );
+
+    return NextResponse.json({ success: true, data: rows });
+  } catch (err) {
+    console.error("❌ Error fetching available dosimeters:", err);
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch available dosimeters" },
       { status: 500 }
     );
   }

@@ -3,26 +3,39 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start",
+    "dev": "next dev --turbopack -p 4488",
+    "build": "next build",
+    "start": "NODE_ENV=production next start -p 4488",
+    "serve": "npm run build && npm run start",
     "lint": "eslint"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.1",
+    "express": "^4.21.2",
     "framer-motion": "^12.23.12",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.541.0",
+    "mammoth": "^1.10.0",
     "mysql2": "^3.14.3",
     "next": "15.5.0",
+    "pm2": "^6.0.8",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "recharts": "^3.2.0",
     "sharp": "^0.34.3",
     "tailwind-merge": "^3.3.1",
-    "tesseract.js": "^6.0.1"
+    "tesseract.js": "^6.0.1",
+    "twilio": "^5.10.4",
+    "update": "^0.4.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4.1.12",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.11",
     "@types/react": "^19.1.11",
     "@types/react-dom": "^19.1.8",
@@ -30,6 +43,7 @@
     "eslint-config-next": "15.5.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.12",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

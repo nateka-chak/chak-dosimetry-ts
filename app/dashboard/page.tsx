@@ -6,6 +6,7 @@ import DashboardStats from '@/components/Dashboard/Dashboard';
 import ShipmentCard from '@/components/Dashboard/ShipmentCard';
 import StatusTimeline from '@/components/Dashboard/StatusTimeline';
 import { Shipment } from '@/types';
+import { API_BASE_URL } from '@/lib/config';
 
 export default function DashboardPage() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
@@ -14,12 +15,24 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchShipments = async () => {
       try {
-        const res = await fetch('/api/shipments');
-        if (!res.ok) throw new Error('Failed to fetch shipments');
+        // Use the new parameter to include dosimeter data
+        const res = await fetch(`${API_BASE_URL}/api/shipments`, {
+          method: "GET",
+          credentials: "include",
+        });
+        
+        if (!res.ok) throw new Error("Failed to fetch shipments");
         const data = await res.json();
-        setShipments(data);
+
+        if (data?.success && Array.isArray(data.data)) {
+          setShipments(data.data);
+        } else {
+          console.error("Unexpected API response:", data);
+          setShipments([]);
+        }
       } catch (err) {
-        console.error('Error loading shipments:', err);
+        console.error("Error loading shipments:", err);
+        setShipments([]);
       } finally {
         setLoading(false);
       }
@@ -31,7 +44,10 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-600 text-lg">Loading shipments...</p>
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="text-gray-600 text-lg">Loading shipments and dosimeter data...</p>
+        </div>
       </div>
     );
   }
@@ -54,6 +70,17 @@ export default function DashboardPage() {
           </motion.div>
         ))}
       </div>
+
+      {/* Show message if no shipments */}
+      {shipments.length === 0 && (
+        <div className="text-center py-12">
+          <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md mx-auto">
+            <span role="img" aria-label="package" className="h-16 w-16 text-gray-400 mx-auto mb-4 flex items-center justify-center text-4xl">📦</span>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Shipments Found</h3>
+            <p className="text-gray-500">There are no active shipments to display.</p>
+          </div>
+        </div>
+      )}
 
       {/* Example Timeline for first shipment */}
       {shipments.length > 0 && (
